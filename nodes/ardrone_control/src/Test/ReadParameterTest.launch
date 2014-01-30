@@ -1,0 +1,6 @@
+<launch>
+		<rosparam file="$(find ardrone_control)/parameters/PID_Parameters.yaml" command="load" />
+
+		<node name="TestNode" pkg="ardrone_control" type="ReadParameterTest.py" respawn="false" output="screen" />
+
+</launch>
