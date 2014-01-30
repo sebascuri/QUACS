@@ -4,7 +4,7 @@
 	
 
 	<group name="Control">
-		<node name="Estimator" pkg="ardrone_control" type="ROS_Odometry.py" respawn="false" output="screen" />
+		<node name="Estimator" pkg="ardrone_control" type="FilteredOdometry.py" respawn="false" output="screen" />
 		<node name="Controller" pkg="ardrone_control" type="ROS_PIDController.py" respawn="false" output="screen" />
 		<node name="StateHandler" pkg="ardrone_control" type="keyboardControl.py" respawn="false" output="screen" />
 	</group>
