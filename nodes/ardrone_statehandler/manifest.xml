@@ -1,0 +1,19 @@
+<package>
+  <description brief="ardrone_statehandler">
+
+     ardrone_statehandler
+
+  </description>
+  <author>sebastiancuri</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/ardrone_statehandler</url>
+  <depend package="ardrone_autonomy"/>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="ardrone_sensorfusion"/>
+
+</package>
+
+
