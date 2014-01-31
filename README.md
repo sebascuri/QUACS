@@ -19,7 +19,16 @@
 This is a repository of a ROS package that controls the parrot AR.DRONE.
 
 ## Dependencies
-It depends primarily on "ardrone_autonomy" and "tum_simulator" packages. It runs in ROS FUERTE. 
+This package depends on:
+
+* ROS Fuerte Distribution ( http://wiki.ros.org/fuerte/Installation/Ubuntu )
+* Ardrone Autonomy Package ( https://github.com/AutonomyLab/ardrone_autonomy )
+* Tum Simulator ( http://wiki.ros.org/tum_simulator )
+* Joy ( http://wiki.ros.org/joy )
+* Numpy ( http://www.numpy.org/ )
+* Scipy ( http://scipy.org/ ) 
+* PyQt4 ( http://pyqt.sourceforge.net/Docs/PyQt4/installation.html )
+* UTM Converter ( https://pypi.python.org/pypi/utm )
 
 ## Modules
 ### State Estimation
