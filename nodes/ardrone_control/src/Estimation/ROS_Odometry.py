@@ -25,15 +25,15 @@ class SensorFusion(Quadrotor, object):
     """docstring for SensorFusion"""
     def __init__(self, **kwargs ):
         super(SensorFusion, self).__init__(**kwargs)
-        rospy.Subscriber('ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
-        rospy.Subscriber('fix', NavSatFix, callback = self.ReceiveGPS)
-        rospy.Subscriber('ardrone/imu', Imu, callback = self.ReceiveImu )
-        rospy.Subscriber('ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight )
+        rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
+        rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
+        rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu )
+        rospy.Subscriber('/ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight )
 
         self.name = kwargs.get('name', "/local")
 
 
-        self.publisher = rospy.Publisher('ardrone/sensorfusion/navdata', Odometry)
+        self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
 
         self.local_tf = tf.TransformBroadcaster()
 

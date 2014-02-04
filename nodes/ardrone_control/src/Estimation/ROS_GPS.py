@@ -28,16 +28,16 @@ class ROS_SensorFusion(SensorFusion, object):
     glues with callbacks with ROS"""
     def __init__(self, **kwargs):
         super(ROS_SensorFusion, self).__init__(**kwargs)
-        rospy.init_node('SensorFusion_Odometry', anonymous = True)
+        rospy.init_node('/SensorFusion_Odometry', anonymous = True)
 
         # rospy.Subscriber('fix', GPS, callback = self.Listen, callback_args = self.ReceiveGPS)
-        rospy.Subscriber('ardrone/navdata',Navdata, callback = self.ReceiveNavdata) 
+        rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata) 
         # rospy.Subscriber('ardrone/imu', Imu, callback = self.ReceiveImu)
-        rospy.Subscriber('fix', NavSatFix, callback = self.ReceiveGPS)
+        rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
         self.gps_calibrated = False
         # rospy.Subscriber('ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight)
 
-        self.publisher = rospy.Publisher('ardrone/sensorfusion/navdata', Odometry)
+        self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
 
         rospy.Timer(rospy.Duration( Command_Time ), self.FuseSensors, oneshot=False)
 

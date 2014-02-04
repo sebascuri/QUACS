@@ -32,6 +32,19 @@ class KeyMapping(object):
 
 class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 	"""docstring for KeyboardController"""
+	MAP = dict(
+		PitchForward     = QtCore.Qt.Key_Right,
+		PitchBackward    = QtCore.Qt.Key_Left,
+		RollLeft         = QtCore.Qt.Key_Up,
+		RollRight        = QtCore.Qt.Key_Down,
+		YawAntiClockwise = QtCore.Qt.Key_A,
+		YawClockwise     = QtCore.Qt.Key_D,
+		IncreaseAltitude = QtCore.Qt.Key_W,
+		DecreaseAltitude = QtCore.Qt.Key_S,
+		Takeoff          = QtCore.Qt.Key_Return,
+		Land             = QtCore.Qt.Key_Backspace,
+		Emergency        = QtCore.Qt.Key_Space,
+		)
 	def __init__(self, **kwargs):
 		super(KeyboardController, self).__init__(**kwargs)
 		self.initUI()
@@ -43,31 +56,31 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 		
 	def keyPressEvent(self, event):
 		key = event.key()
-		if key == KeyMapping.Takeoff:
+		if key == self.MAP['Takeoff']:
 			self.TakeOff()
-		elif key == KeyMapping.Land:
+		elif key == self.MAP['Land']:
 			self.Land()
-		elif key == KeyMapping.Emergency:
+		elif key == self.MAP['Emergency']:
 			self.Reset()
-		elif key == KeyMapping.RollLeft:
+		elif key == self.MAP['RollLeft']:
 			self.quadrotor.position.x += StepX
 			print "+X"
-		elif key == KeyMapping.RollRight:
+		elif key == self.MAP['RollRight']:
 			self.quadrotor.position.x -= StepX
 			print "-X"
-		elif key == KeyMapping.PitchForward:
-			self.quadrotor.position.y += StepY
-			print "+Y"
-		elif key == KeyMapping.PitchBackward:
+		elif key == self.MAP['PitchForward']:
 			self.quadrotor.position.y -= StepY
+			print "+Y"
+		elif key == self.MAP['PitchBackward']:
+			self.quadrotor.position.y += StepY
 			print "-Y"
-		elif key == KeyMapping.IncreaseAltitude:
+		elif key == self.MAP['IncreaseAltitude']:
 			self.quadrotor.position.z += StepZ
 			print "+z"
-		elif key == KeyMapping.DecreaseAltitude:
+		elif key == self.MAP['DecreaseAltitude']:
 			self.quadrotor.position.z -= StepZ
 			print "-z"
-		elif key == KeyMapping.YawRight:
+		elif key == self.MAP['YawAntiClockwise']:
 			self.quadrotor.position.yaw += StepYaw
 			print "+Yaw"
 			quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
@@ -75,7 +88,7 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 			self.quadrotor.orientation.y = quaternion[1]
 			self.quadrotor.orientation.z = quaternion[2]
 			self.quadrotor.orientation.w = quaternion[3]
- 		elif key == KeyMapping.YawLeft:
+ 		elif key == self.MAP['YawClockwise']:
  			print "-Yaw"
 			self.quadrotor.position.yaw -= StepYaw
 			quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')

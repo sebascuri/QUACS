@@ -10,7 +10,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist # for trajectory and space Estimation
 from std_msgs.msg import Empty
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
-from diagnostic_msgs.msg import KeyValue 
+from diagnostic_msgs.msg import KeyValue # added for State Handling
 
 import Controller 
 
@@ -47,11 +47,11 @@ class ROS_Handler(DroneController, object):
 
 		rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False)
 		
-		rospy.Subscriber('ardrone/controller/state', KeyValue, callback = self.RecieveState)
-		rospy.Subscriber('ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' )
-		rospy.Subscriber('ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
+		rospy.Subscriber('/ardrone/controller/state', KeyValue, callback = self.RecieveState)
+		rospy.Subscriber('/ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' )
+		rospy.Subscriber('/ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
 
-		self.command_velocity = rospy.Publisher('cmd_vel', Twist)
+		self.command_velocity = rospy.Publisher('/cmd_vel', Twist)
 
 		self.angles_map = dict(x = 0, y = 1 , z = 2)
 		

@@ -1,0 +1,21 @@
+<launch>
+	<include file="$(find cvg_sim_test)/launch/3boxes_room.launch"/>
+	<rosparam file="$(find ardrone_control)/parameters/PID_Parameters.yaml" command="load" />
+	
+	 <!-- joy node -->
+  	<node respawn="true" pkg="joy" type="joy" name="turtle_joy" >
+    	<param name="dev" type="string" value="/dev/input/js0" />
+  	</node>
+
+	<group ns="Control">
+		<node name="Estimator" pkg="ardrone_control" type="FilteredOdometry.py" respawn="false" output="screen" />
+		<node name="Controller" pkg="ardrone_control" type="ROS_PIDController.py" respawn="false" output="screen" />
+		<node name="StateHandler" pkg="ardrone_control" type="keyboardControl.py" respawn="false" output="screen" />
+	</group>
+
+	<!--group ns="Plot">
+		<node pkg="rxtools" type="rxplot" name="plot_set_point" args="/ardrone/trajectory/pose/pose/position/x:y:z,/ardrone/sensorfusion/navdata/pose/pose/position/x:y:z" />
+		<node pkg="rxtools" type="rxplot" name="plot_error" args="/ground_truth/state/pose/pose/position/x:y:z,/ardrone/sensorfusion/navdata/pose/pose/position/x:y:z" />
+    </group-->
+
+</launch>

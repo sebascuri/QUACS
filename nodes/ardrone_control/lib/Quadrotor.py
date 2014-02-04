@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 
 from math import pi
-from BasicObject import BasicObject, SixDofObject, Quaternion, Motor, State
+from BasicObject import BasicObject, SixDofObject, Quaternion, Motor, ArDroneState
 import Process
 import Sensors
 # from EKF import EKF
@@ -16,7 +16,7 @@ class Quadrotor(BasicObject, object):
 			velocity = kwargs.get('velocity', SixDofObject() ),
 			acceleration = kwargs.get('acceleration', SixDofObject() ),
 			battery = kwargs.get('battery', 100 ) ,
-			state = kwargs.get('state', State()) ,
+			state = kwargs.get('state', ArDroneState()) ,
 			motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] )  ,
 			processes = kwargs.get('processes', list() ),
 			sensors = kwargs.get('sensors', list() )
@@ -30,7 +30,7 @@ class Quadrotor(BasicObject, object):
 		self.velocity = kwargs.get('velocity', SixDofObject() )
 		self.acceleration = kwargs.get('acceleration', SixDofObject() )
 		self.battery = kwargs.get('battery', 100 )
-		self.state = kwargs.get('state', State())
+		self.state = kwargs.get('state', ArDroneState())
 		self.motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] ) 
 		self.processes = kwargs.get('processes', list() )
 		self.sensors = kwargs.get('sensors', list() )
@@ -42,7 +42,7 @@ class Quadrotor(BasicObject, object):
 		self.properties['acceleration'] = SixDofObject()
 		self.properties['battery'] = 100
 		self.properties['motors'] = 
-		self.properties['state'] = State()
+		self.properties['state'] = ArDroneState()
 		self.properties['processes'] = kwargs.get('processes', list() )
 		self.properties['sensors'] = kwargs.get('sensors', list() )
 		"""
@@ -132,7 +132,7 @@ class Quadrotor(BasicObject, object):
 
 	@property
 	def state(self):
-		return self.properties.get('state', State())
+		return self.properties.get('state', ArDroneState())
 	@state.setter
 	def state(self, state):
 		self.set_state(state)

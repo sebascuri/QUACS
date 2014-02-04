@@ -23,6 +23,7 @@ class ControllerState(object):
 		super(ControllerState, self).__init__()
 		self._STATES = { 0: 'Go-to-Goal', 1: 'Avoid-Obstacles', 2: 'Sliding-Mode' }
 		self.state = state 
+
 	def __str__(self):
 		return str(self._state)
 
@@ -57,20 +58,18 @@ class ROS_Handler(object):
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 		
-		
-
-		self.land = rospy.Publisher('ardrone/land', Empty)
-		self.takeoff = rospy.Publisher('ardrone/takeoff', Empty)
-		self.reset = rospy.Publisher('ardrone/reset', Empty)
+		self.land = rospy.Publisher('/ardrone/land', Empty)
+		self.takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True)
+		self.reset = rospy.Publisher('/ardrone/reset', Empty)
 
 		self.quadrotor = Quadrotor()
 
-		self.controller = ControllerState()
+		# self.controller = ControllerState()
 
 		self.name = kwargs.get('name', "/goal")
 
-		rospy.Subscriber('ardrone/navdata', Navdata, callback = self.RecieveNavdata)
-		self.trajectory = rospy.Publisher('ardrone/trajectory', Odometry)
+		rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata)
+		self.trajectory = rospy.Publisher('/ardrone/trajectory', Odometry)
 		self.goal_tf = tf.TransformBroadcaster()
 
 		rospy.Timer(rospy.Duration( kwargs.get('Command_Time', 1) ), self.Talk, oneshot=False)

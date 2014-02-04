@@ -237,7 +237,7 @@ class Quaternion(BasicObject, object):
 						
 class State(BasicObject, object):
 	"""docstring for State"""
-	MAP = {0 : 'Unknown', 1 : 'Inited', 2 : 'Landed', 3 : 'Flying', 4 : 'Hovering', 5 : 'Test', 6 : 'Taking off', 7 : 'Flying', 8 : 'Landed', 9 : 'Looping'}
+	#MAP = {0 : 'Unknown', 1 : 'Inited', 2 : 'Landed', 3 : 'Flying', 4 : 'Hovering', 5 : 'Test', 6 : 'Taking off', 7 : 'Flying', 8 : 'Landed', 9 : 'Looping'}
 	def __init__(self, state = 2):
 		# super(State, self).__init__()
 		self.properties = dict( state = state)
@@ -251,29 +251,52 @@ class State(BasicObject, object):
 		if type(data) == str:
 			return str(self.state) is data
 		elif type(data) == int:
-			return str(self.state) is State.MAP[data]
+			return str(self.state) is self.MAP[data]
 
 	def set_state(self, state):
-		if (state in State.MAP.values()) or (state in State.MAP.keys()):
+		if (state in self.MAP.values()) or (state in self.MAP.keys()):
 			if type(state) == int:
-				self.state = State.MAP[state]
+				self.state = self.MAP[state]
 			else:
 				self.state = state
 		else:
-			self.state = State.MAP[0]
+			self.state = self.MAP[0]
 			print 'State not recognized, setting it to Unkown'
 
 	# Object Properties
 	@property 
 	def state(self):
-		return self.properties.get('state', State.MAP[0])
+		return self.properties.get('state', self.MAP[0])
 	@state.setter
 	def state(self, state):
 		self.properties['state'] = state
 	@state.deleter
 	def state(self):
 		del self.properties['state']
-	
+
+class ArDroneState(State, object):
+	MAP = {
+	0 : 'Unknown', 
+	1 : 'Inited', 
+	2 : 'Landed', 
+	3 : 'Flying', 
+	4 : 'Hovering', 
+	5 : 'Test', 
+	6 : 'Taking off', 
+	7 : 'Flying', 
+	8 : 'Landed', 
+	9 : 'Looping'}
+
+class ControllerState(State, object):
+	MAP = {
+	-1: 'Off',
+	0 : 'Unknown', 
+	1 : 'Go-to-Goal', 
+	2 : 'Avoid-Obstacles', 
+	3 : 'Sliding-Mode'
+	}
+
+
 class Motor(BasicObject, object):
 	"""docstring for Motors"""
 	def __init__(self, **kwargs):
@@ -300,7 +323,6 @@ class Motor(BasicObject, object):
 	def pwm(self):
 		del self.properties['pwm']
 	
-
 def iterate_test():
 	obj = SixDofObject()
 	obj.x = 1; 
@@ -320,8 +342,6 @@ def iterate_test():
 	print len(obj)
 	
 def state_test():
-
-
 	print "State Test"
 	state = State(state = 'Landed')
 	print state
@@ -345,6 +365,43 @@ def state_test():
 	print state.state
 	print state == 'Unknown' 
 	print state == 0
+
+def ardrone_state_test():
+	print "ArDroneState Test"
+	state = ArDroneState(state = 'Landed')
+	print state
+
+	state.set_state(4)
+	print state
+
+	state.set_state(-3)
+	print state
+
+	state.set_state('Flying')
+	print state
+	print state is 'Flying'
+	print state == 'Flying'
+	print id(state)
+
+
+	state.set_state('Flyiiing')
+	print state
+
+	print state.state
+	print state == 'Unknown' 
+	print state == 0
+
+def controller_state_test():
+	print "Controller State Test"
+	state = ControllerState(state = 'Off') 
+	print state.state
+	print state.MAP
+	state.set_state('Go-to-Goal')
+	print state.state
+
+	print state.state is 'Go-to-Goal'
+
+
 
 def motor_test():
 	print "Motor Test"
@@ -381,10 +438,11 @@ def main():
 	ob = BasicObject()
 	print ob.properties
 
-	iterate_test()
-	state_test()
-	motor_test()
-	sixdofobject_test()
-	quaternion_test()
-
+	#iterate_test()
+	#state_test()
+	#motor_test()
+	#sixdofobject_test()
+	#quaternion_test()
+	#ardrone_state_test()
+	controller_state_test()
 if __name__ == '__main__': main()
