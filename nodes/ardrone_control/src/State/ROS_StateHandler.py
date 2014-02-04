@@ -14,44 +14,15 @@ from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from Quadrotor import Quadrotor
 
 import tf
+from math import pi
 
 
+Step = dict( 
+	x = 0.1, 
+	y = 0.1, 
+	z = 0.1, 
+	yaw = pi/20)
 
-class ControllerState(object):
-	"""docstring for ControllerState"""
-	def __init__(self, state = 0):
-		super(ControllerState, self).__init__()
-		self._STATES = { 0: 'Go-to-Goal', 1: 'Avoid-Obstacles', 2: 'Sliding-Mode' }
-		self.state = state 
-
-	def __str__(self):
-		return str(self._state)
-
-	def __eq__(self, data):
-		if type(data) == str:
-			return str(self._state) == data
-		elif type(data) == int:
-			return str(self._state) == self._STATES[data]	
-
-	@property 
-	def state(self):
-		return self._state 
-	@state.setter
-	def state(self, state):
-		if (state in self._STATES.values()) or (state in self._STATES.keys()):
-			if type(state) == int:
-				self._state = self._STATES[state]
-			elif type(state) == float:
-				self._state = self._STATES[int(state)]
-			else:
-				self._state = state
-		else:
-			self._state = self._STATES[0]
-			print 'State not recognized, setting it to Unkown'
-
-	@state.deleter
-	def state(self):
-		del self._state
 
 class ROS_Handler(object):
 	"""docstring for ROS_Handler"""
@@ -131,6 +102,28 @@ class ROS_Handler(object):
 		self.land.publish()
 		print "Landing"
 
+	def X(self, scale):
+		self.change_set_point('x', scale)
+
+	def Y(self, scale):
+		self.change_set_point('y', scale)
+
+	def Z(self, scale):
+		self.change_set_point('z', scale)
+
+	def Yaw(self, scale):
+		self.change_set_point('yaw', scale)
+		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
+		self.quadrotor.orientation.x = quaternion[0]
+		self.quadrotor.orientation.y = quaternion[1]
+		self.quadrotor.orientation.z = quaternion[2]
+		self.quadrotor.orientation.w = quaternion[3]
+
+	def change_set_point(self, direction, scale):
+		setattr(self.quadrotor.position, direction, 
+			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
+
+		# print scale, direction
 
 def main():
 	rospy.init_node('StateHandler', anonymous = True)

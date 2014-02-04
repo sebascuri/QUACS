@@ -13,11 +13,6 @@ from math import pi
 
 import tf
 
-Step = dict( 
-	x = 0.1, 
-	y = 0.1, 
-	z = 0.1, 
-	yaw = pi/20)
 
 class JoystickController(ROS_Handler, object):
 	"""docstring for JoystickController"""
@@ -34,79 +29,11 @@ class JoystickController(ROS_Handler, object):
 		super(JoystickController, self).__init__(**kwargs)
 		rospy.Subscriber('/joy', Joy, callback = self.RecieveJoy)
 
-	def X(self, scale):
-		self.change_set_point('x', scale)
-
-	def Y(self, scale):
-		self.change_set_point('y', scale)
-
-	def Z(self, scale):
-		self.change_set_point('z', scale)
-
-	def Yaw(self, scale):
-		self.change_set_point('yaw', scale)
-		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
-		self.quadrotor.orientation.x = quaternion[0]
-		self.quadrotor.orientation.y = quaternion[1]
-		self.quadrotor.orientation.z = quaternion[2]
-		self.quadrotor.orientation.w = quaternion[3]
-
-	def change_set_point(self, direction, scale):
-		setattr(self.quadrotor.position, direction, 
-			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
-
-
 	def RecieveJoy(self, data):
 		for command, message_data in self.MAP.items():
 			for key, index in message_data.items():
-				if getattr(data, key)[index]:
+				if getattr(data, key)[index]: #if non-zero
 					getattr(self, command)( getattr(data, key)[index] )
-
-		
-	"""
-	def keyPressEvent(self, event):
-		key = event.key()
-		if key == self.MAP['Takeoff']:
-			self.TakeOff()
-		elif key == self.MAP['Land']:
-			self.Land()
-		elif key == self.MAP['Emergency']:
-			self.Reset()
-		elif key == self.MAP['RollLeft']:
-			self.quadrotor.position.x += StepX
-			print "+X"
-		elif key == self.MAP['RollRight']:
-			self.quadrotor.position.x -= StepX
-			print "-X"
-		elif key == self.MAP['PitchForward']:
-			self.quadrotor.position.y -= StepY
-			print "+Y"
-		elif key == self.MAP['PitchBackward']:
-			self.quadrotor.position.y += StepY
-			print "-Y"
-		elif key == self.MAP['IncreaseAltitude']:
-			self.quadrotor.position.z += StepZ
-			print "+z"
-		elif key == self.MAP['DecreaseAltitude']:
-			self.quadrotor.position.z -= StepZ
-			print "-z"
-		elif key == self.MAP['YawAntiClockwise']:
-			self.quadrotor.position.yaw += StepYaw
-			print "+Yaw"
-			quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
-			self.quadrotor.orientation.x = quaternion[0]
-			self.quadrotor.orientation.y = quaternion[1]
-			self.quadrotor.orientation.z = quaternion[2]
-			self.quadrotor.orientation.w = quaternion[3]
- 		elif key == self.MAP['YawClockwise']:
- 			print "-Yaw"
-			self.quadrotor.position.yaw -= StepYaw
-			quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
-			self.quadrotor.orientation.x = quaternion[0]
-			self.quadrotor.orientation.y = quaternion[1]
-			self.quadrotor.orientation.z = quaternion[2]
-			self.quadrotor.orientation.w = quaternion[3]
-	"""
 		
 def main():  
 	rospy.init_node('StateHandler', anonymous = True)
