@@ -114,7 +114,7 @@ class ROS_Handler(object):
             msgs.child_frame_id, 
             msgs.header.frame_id)
 
-	def TakeOff(self):
+	def TakeOff(self, *args):
 		# Send a takeoff message to the ardrone driver
 		# Note we only send a takeoff message if the drone is landed - an unexpected takeoff is not good!
 		if(self.quadrotor.state == 'Landed'):
@@ -123,11 +123,11 @@ class ROS_Handler(object):
 		else:
 			print "Drone is not landed"
 
-	def Reset(self):
+	def Reset(self, *args):
 		self.reset.publish()
 		print "Reset"
 
-	def Land(self):
+	def Land(self, *args):
 		self.land.publish()
 		print "Landing"
 

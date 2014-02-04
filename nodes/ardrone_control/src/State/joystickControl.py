@@ -3,44 +3,67 @@
 # Import the ROS libraries, and load the manifest file which through <depend package=.. /> will give us access to the project dependencies
 import roslib; roslib.load_manifest('ardrone_control')
 import rospy
-import sys
+
+from sensor_msgs.msg import Joy
+
 from ROS_StateHandler import ROS_Handler
 
-from PyQt4 import QtGui, QtCore
+# from PyQt4 import QtGui, QtCore
 from math import pi
 
 import tf
 
+Step = dict( 
+	x = 0.1, 
+	y = 0.1, 
+	z = 0.1, 
+	yaw = pi/20)
 
-StepX = 0.1
-StepY = 0.1
-StepZ = 0.1
-StepYaw = pi/20
-
-class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
-	"""docstring for KeyboardController"""
+class JoystickController(ROS_Handler, object):
+	"""docstring for JoystickController"""
 	MAP = dict(
-		PitchForward     = QtCore.Qt.Key_Right,
-		PitchBackward    = QtCore.Qt.Key_Left,
-		RollLeft         = QtCore.Qt.Key_Up,
-		RollRight        = QtCore.Qt.Key_Down,
-		YawAntiClockwise = QtCore.Qt.Key_A,
-		YawClockwise     = QtCore.Qt.Key_D,
-		IncreaseAltitude = QtCore.Qt.Key_W,
-		DecreaseAltitude = QtCore.Qt.Key_S,
-		Takeoff          = QtCore.Qt.Key_Return,
-		Land             = QtCore.Qt.Key_Backspace,
-		Emergency        = QtCore.Qt.Key_Space,
-		)
+		X     			= {'axes' : 3}, #Right Analog Up-Down
+		Y    			= {'axes' : 2}, #Right Analog Left-Right
+		Z         		= {'axes' : 1}, #Left Analog Up-Down
+		Yaw 			= {'axes' : 0}, #Left Analog Left-Right
+		TakeOff         = {'buttons' : 14}, #Cross Button
+		Land            = {'buttons' : 15}, #Square Button
+		Reset       	= {'buttons' : 11}, #R1 Button
+		) 
 	def __init__(self, **kwargs):
-		super(KeyboardController, self).__init__(**kwargs)
-		self.initUI()
+		super(JoystickController, self).__init__(**kwargs)
+		rospy.Subscriber('/joy', Joy, callback = self.RecieveJoy)
 
-	def initUI( self ):
-		self.setGeometry(300,300,250,150)
-		self.setWindowTitle('AR.Drone KeyboardController')
-		self.show()
+	def X(self, scale):
+		self.change_set_point('x', scale)
+
+	def Y(self, scale):
+		self.change_set_point('y', scale)
+
+	def Z(self, scale):
+		self.change_set_point('z', scale)
+
+	def Yaw(self, scale):
+		self.change_set_point('yaw', scale)
+		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
+		self.quadrotor.orientation.x = quaternion[0]
+		self.quadrotor.orientation.y = quaternion[1]
+		self.quadrotor.orientation.z = quaternion[2]
+		self.quadrotor.orientation.w = quaternion[3]
+
+	def change_set_point(self, direction, scale):
+		setattr(self.quadrotor.position, direction, 
+			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
+
+
+	def RecieveJoy(self, data):
+		for command, message_data in self.MAP.items():
+			for key, index in message_data.items():
+				if getattr(data, key)[index]:
+					getattr(self, command)( getattr(data, key)[index] )
+
 		
+	"""
 	def keyPressEvent(self, event):
 		key = event.key()
 		if key == self.MAP['Takeoff']:
@@ -83,22 +106,14 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 			self.quadrotor.orientation.y = quaternion[1]
 			self.quadrotor.orientation.z = quaternion[2]
 			self.quadrotor.orientation.w = quaternion[3]
-
+	"""
 		
 def main():  
-	import sys  
 	rospy.init_node('StateHandler', anonymous = True)
 
-
-	app = QtGui.QApplication(sys.argv)
-	keyb = KeyboardController()
-
-	# executes the QT application
-	status = app.exec_()
+	joy = JoystickController()
 
 	rospy.spin()
-
-	sys.exit(status)
 		
 
 
