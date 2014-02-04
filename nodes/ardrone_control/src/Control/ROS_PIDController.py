@@ -7,9 +7,10 @@ import rospy
 # Import the messages we're interested in sending and receiving
 from sensor_msgs.msg import Imu, Range
 from nav_msgs.msg import Odometry 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist # for trajectory and space Estimation
 from std_msgs.msg import Empty
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
+from diagnostic_msgs.msg import KeyValue 
 
 import Controller 
 
@@ -44,9 +45,9 @@ class ROS_Handler(DroneController, object):
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 
-		
 		rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False)
 		
+		rospy.Subscriber('ardrone/controller/state', KeyValue, callback = self.RecieveState)
 		rospy.Subscriber('ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' )
 		rospy.Subscriber('ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
 
@@ -54,8 +55,6 @@ class ROS_Handler(DroneController, object):
 
 		self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
-
-
 	def RecieveOdometry( self, data , method):
 		for key in self.position_control.keys():
 			getattr(self.position_control[key], method)( position = getattr(data.pose.pose.position, key), velocity = getattr(data.twist.twist.linear, key ) )
@@ -83,6 +82,8 @@ class ROS_Handler(DroneController, object):
 		twist.linear.y = aux_y
 		self.command_velocity.publish(twist)
 
+	def RecieveState(self, data):
+		pass
 
 def main():    
 	rospy.init_node('Controller', anonymous = True)

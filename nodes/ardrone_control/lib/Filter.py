@@ -34,7 +34,6 @@ class DigitalFilter(BasicObject, object):
 
 		return self.get_output()
 
-
 	def Filter(self):
 		try:
 			new_output = 0 
@@ -48,10 +47,68 @@ class DigitalFilter(BasicObject, object):
 		except IndexError:
 			self.output.append( self.input[-1] )
 
-
 	def get_output(self):
 
 		return self.output[-1]
+
+	# Object Properties
+	@property
+	def input(self):
+		return self.properties.get('input', None)
+	@input.setter
+	def input(self, new_input):
+		if self.input is None:
+			self.properties['input'] = new_input #first input
+		else:
+			self.set_input(new_input) #sets new input and then controls 
+		# self.properties['input'] = new_input
+	@input.deleter
+	def input(self):
+		del self.properties['input']
+
+	@property
+	def output(self):
+		return self.properties.get('output', None)
+	@output.setter
+	def output(self, new_output):
+		if self.output is None:
+			self.properties['output'] = new_output #first output
+		else:
+			self.output.append(new_output)
+	@output.deleter
+	def output(self):
+		del self.properties['output']
+
+	@property
+	def Ts(self):
+		return self.properties.get('Ts', 0.0)
+	@Ts.setter
+	def Ts(self, Ts):
+		self.properties['Ts'] = Ts
+	@Ts.deleter
+	def Ts(self):
+		del self.properties['Ts']
+
+	@property
+	def a(self):
+		return self.properties.get('a', 0.0)
+	@a.setter
+	def a(self, a):
+		self.properties['a'] = a
+	@a.deleter
+	def a(self):
+		del self.properties['a']
+
+	@property
+	def b(self):
+		return self.properties.get('b', 0.0)
+	@b.setter
+	def b(self, b):
+		self.properties['b'] = b
+	@b.deleter
+	def b(self):
+		del self.properties['b']
+
 
 def main():
 	import h5py

@@ -18,7 +18,7 @@ class BasicController(BasicObject, object):
 			velocity =  kwargs.get('derivative_set_point', kwargs.get('velocity_set_point', deque([0],  maxlen = kwargs.get('derivative_set_point_size', 1) ) ) ) )
 
 		self.Ts = kwargs.get( 'Ts', kwargs.get('Command_Time', 0) )
-
+	
 	def change_set_point(self, *args, **kwargs):
 
 		self.set_dict_deque(self.set_point, *args, **kwargs)
@@ -52,6 +52,71 @@ class BasicController(BasicObject, object):
 
 		return self.output[-1]
 
+	# Object Properties
+	@property
+	def input(self):
+		return self.properties.get('input', None)
+	@input.setter
+	def input(self, new_input):
+		if self.input is None:
+			self.properties['input'] = new_input #first input
+		else:
+			self.set_input(new_input) #sets new input and then controls 
+		# self.properties['input'] = new_input
+	@input.deleter
+	def input(self):
+		del self.properties['input']
+
+	@property
+	def output(self):
+		return self.properties.get('output', None)
+	@output.setter
+	def output(self, new_output):
+		if self.output is None:
+			self.properties['output'] = new_output #first output
+		else:
+			self.output.append(new_output)
+	@output.deleter
+	def output(self):
+		del self.properties['output']
+
+	@property
+	def error(self):
+		return self.properties.get('error', None)
+	@error.setter
+	def error(self, new_error):
+		if self.error is None:
+			self.properties['error'] = new_error #first error
+		else:
+			self.error.append(new_error)
+	@error.deleter
+	def error(self):
+		del self.properties['error']
+
+	@property
+	def set_point(self):
+		return self.properties.get('set_point', None)
+	@set_point.setter
+	def set_point(self, new_set_point):
+		if self.set_point is None:
+			self.properties['set_point'] = new_set_point #first set_point
+		else:
+			self.change_set_point(new_set_point)
+	@set_point.deleter
+	def set_point(self):
+		del self.properties['set_point']
+
+	@property
+	def Ts(self):
+		return self.properties.get('Ts', 0.0)
+	@Ts.setter
+	def Ts(self, Ts):
+		self.properties['Ts'] = Ts
+	@Ts.deleter
+	def Ts(self):
+		del self.properties['Ts']
+
+
 class PID_Controller(BasicController, object):
 	"""docstring for Controller"""
 	def __init__(self, **kwargs):
@@ -64,13 +129,21 @@ class PID_Controller(BasicController, object):
 	def set_input(self, *args, **kwargs):
 		super(PID_Controller, self).set_input(*args, **kwargs)
 		
-		if not self.saturation:
-			self.parallel_errors['integral'] += self.Ts * self.error['position'][-1]
-
-		self.parallel_errors['proportional']  = self.error['position'][-1]
-		self.parallel_errors['derivative'] = self.error['velocity'][-1]
-
+		self.set_parallel_errors()
 		self.Control()
+
+	def set_parallel_errors(self, *args):
+		if len(args) == 0:
+			self.update_errors(self.error)
+		else:
+			self.update_errors(args[0])
+
+	def update_errors(self, error_dict):
+		if not self.saturation:
+			self.parallel_errors['integral'] += self.Ts * error_dict['position'][-1]
+
+		self.parallel_errors['proportional'] = error_dict['position'][-1]
+		self.parallel_errors['derivative'] = error_dict['velocity'][-1]
 
 	def Control(self):
 		aux = 0 
@@ -84,8 +157,41 @@ class PID_Controller(BasicController, object):
 		for key in self.parallel_errors.keys():
 			self.parallel_errors[key] = 0 
 
-	def Saturate(self):
-		self.saturation = True  
+	# Object Properties
+	@property
+	def parallel_errors(self):
+		return self.properties.get('parallel_errors', None)
+	@parallel_errors.setter
+	def parallel_errors(self, new_error):
+		if self.parallel_errors is None:
+			self.properties['parallel_errors'] = new_error
+		else:
+			self.set_parallel_errors(new_error)
+	@parallel_errors.deleter
+	def parallel_errors(self):
+		del self.properties['parallel_errors'] 
+
+	@property
+	def gains(self):
+		return self.properties.get('gains', None)
+	@gains.setter
+	def gains(self, new_gains):
+		self.properties['gains'] = new_gains
+	@gains.deleter
+	def gains(self):
+		del self.properties['gains'] 
+
+	@property
+	def saturation(self):
+		return self.properties.get('saturation', None)
+	@saturation.setter
+	def saturation(self, new_saturation):
+		self.properties['saturation'] = new_saturation
+	@saturation.deleter
+	def saturation(self):
+		del self.properties['saturation'] 
+
+
 		
 def basicController( ):
 	control = BasicController( )

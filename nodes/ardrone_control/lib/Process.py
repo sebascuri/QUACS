@@ -12,9 +12,22 @@ class BasicProcess(BasicObject, object):
 	"""docstring for Odometry"""
 	def __init__(self, **kwargs):
 		# super(BasicProcess, self).__init__( **kwargs )
-		self._stateList = kwargs.get('stateList', list())  #List from property to index in X state
-		self.X = kwargs.get('X', matlib.zeros( [len(self._stateList), 1] ))
-		self.Jacobian = kwargs.get('Jacobian', matlib.eye( len(self._stateList) ) )
+		self.properties = dict( stateList = kwargs.get('stateList', list()))  #List from property to index in X state
+		self.properties.update(
+			X = kwargs.get('X', matlib.zeros( [len(self), 1] )),
+			Jacobian = kwargs.get('Jacobian', matlib.eye( len(self) ) ),
+			Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ) ),
+			Ts = kwargs.get('Ts', None),
+			position = kwargs.get('position', SixDofObject()),
+			orientation = kwargs.get('orientation', Quaternion()),
+			velocity = kwargs.get('velocity', SixDofObject()),
+			acceleration = kwargs.get('acceleration', SixDofObject()) 
+			)
+
+		"""
+		self.stateList = kwargs.get('stateList', list())  #List from property to index in X state
+		self.X = kwargs.get('X', matlib.zeros( [len(self.stateList), 1] ))
+		self.Jacobian = kwargs.get('Jacobian', matlib.eye( len(self.stateList) ) )
 		self.Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ))
 		self.Ts = kwargs.get('Ts', None)
 
@@ -23,24 +36,35 @@ class BasicProcess(BasicObject, object):
 		self.orientation = kwargs.get('orientation', Quaternion())
 		self.velocity = kwargs.get('velocity', SixDofObject())
 		self.acceleration = kwargs.get('acceleration', SixDofObject())
+		"""
 
 	def __len__(self):
-		return np.size(self._stateList) 
+		return np.size(self.stateList) 
 
 	def update(self, **kwargs):
 		for key, value in kwargs.items():
 			setattr(self, key, value)
 
 	def get_stateList(self):
-		return self._stateList
+		return self.stateList
 
 	def set_X(self):
 		i = 0
-		for key in self._stateList:
+		for key in self.stateList:
 			attribute, direction = key.split('.')
-			self.X[[i]] = getattr(getattr(self, attribute), direction)
+			self.X[ i ] = getattr(getattr(self, attribute), direction)
 			i += 1
-	"""
+
+	@property 
+	def stateList(self):
+		return self.properties.get('stateList', list())
+	@stateList.setter 
+	def stateList(self, stateList):
+		self.properties['stateList'] = stateList
+	@stateList.deleter
+	def stateList(self):
+		del self.properties['stateList']
+
 	@property 
 	def Ts(self):
 		return self.properties.get('Ts', None)
@@ -53,7 +77,7 @@ class BasicProcess(BasicObject, object):
 
 	@property 
 	def X(self):
-		return self.properties.get('X', None)
+		return self.properties.get('X', matlib.zeros( [len(self), 1] ) )
 	@X.setter 
 	def X(self, *args, **kwargs):
 		for arg in args:
@@ -61,10 +85,10 @@ class BasicProcess(BasicObject, object):
 				self.properties['X'] = arg 
 			elif type(arg) == type( dict() ):
 				for key, value in arg.items():
-					self.X[ self._stateList.index(key) ][0] =  value
+					self.X[ self.stateList.index(key) ][0] =  value
 
 		for key, value in kwargs.items():
-			self.X[ self._stateList.index(key) ][0] =  value
+			self.X[ self.stateList.index(key) ][0] =  value
 
 	@X.deleter
 	def X(self):
@@ -72,7 +96,7 @@ class BasicProcess(BasicObject, object):
 
 	@property
 	def Jacobian(self):
-		return self.properties.get('Jacobian', None)
+		return self.properties.get('Jacobian', matlib.eye( len(self) ) )
 	@Jacobian.setter
 	def Jacobian(self, A):
 		self.properties['Jacobian'] = A
@@ -82,7 +106,7 @@ class BasicProcess(BasicObject, object):
 
 	@property
 	def Covariance(self):
-		return self.properties.get('Covariance', None)
+		return self.properties.get('Covariance', 0.3 * matlib.eye( len(self) ) )
 	@Covariance.setter
 	def Covariance(self, Q):
 		self.properties['Covariance'] = Q 
@@ -90,14 +114,53 @@ class BasicProcess(BasicObject, object):
 	def Covariance(self):
 		del self.properties['Covariance']	
 
-	"""
+
+	@property
+	def position(self):
+		return self.properties.get('position', SixDofObject())
+	@position.setter
+	def position(self, position):
+		self.properties['position'] = position
+	@position.deleter
+	def position(self):
+		del self.properties['position']	
+
+	@property
+	def orientation(self):
+		return self.properties.get('orientation', Quaternion())
+	@orientation.setter
+	def orientation(self, orientation):
+		self.properties['orientation'] = orientation
+	@orientation.deleter
+	def orientation(self):
+		del self.properties['orientation']	
+
+	@property
+	def velocity(self):
+		return self.properties.get('velocity', SixDofObject())
+	@velocity.setter
+	def velocity(self, velocity):
+		self.properties['velocity'] = velocity
+	@velocity.deleter
+	def velocity(self):
+		del self.properties['velocity']	
+
+	@property
+	def acceleration(self):
+		return self.properties.get('acceleration', SixDofObject())
+	@acceleration.setter
+	def acceleration(self, acceleration):
+		self.properties['acceleration'] = acceleration
+	@acceleration.deleter
+	def acceleration(self):
+		del self.properties['acceleration']	
 
 class XY_Odometry1(BasicProcess, object):
 	"""docstring for Odometry
 	First Order Odometry for AR.DRONE"""
 	def __init__(self, *args, **kwargs):
-		self._stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
-		super(XY_Odometry1, self).__init__(stateList = self._stateList, *args, **kwargs )
+		stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
+		super(XY_Odometry1, self).__init__(stateList = stateList, *args, **kwargs )
 
 	def update(self, **kwargs):
 		super(XY_Odometry1, self).update( **kwargs )
@@ -117,8 +180,8 @@ class XY_Odometry1(BasicProcess, object):
 class Z_Odometry1(BasicProcess, object):
 	"""docstring for Z_Odometry1"""
 	def __init__(self, *args, **kwargs):
-		self._stateList = ['position.z']
-		super(Z_Odometry1, self).__init__(stateList = self._stateList, *args, **kwargs )
+		stateList = ['position.z']
+		super(Z_Odometry1, self).__init__(stateList = stateList, *args, **kwargs )
 
 	def update(self, **kwargs):
 		super(Z_Odometry1, self).update( **kwargs )
@@ -135,8 +198,8 @@ class XY_Odometry2(BasicProcess, object):
 	"""docstring for Odometry2
 	Second Order Odometry for AR.DRONE"""
 	def __init__(self, *args, **kwargs):
-		self._stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
-		super(XY_Odometry2, self).__init__(stateList = self._stateList, *args, **kwargs )
+		stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
+		super(XY_Odometry2, self).__init__(stateList = stateList, *args, **kwargs )
 
 	def update(self, **kwargs):
 		super(XY_Odometry2, self).update( **kwargs )
@@ -166,8 +229,8 @@ class XY_Odometry2(BasicProcess, object):
 class Z_Odometry2(BasicProcess, object):
 	"""docstring for Z_Odometry1"""	
 	def __init__(self, *args, **kwargs):
-		self._stateList = {'position.z' : 0}
-		super(Z_Odometry2, self).__init__(stateList = self._stateList, *args, **kwargs )
+		stateList = ['position.z']
+		super(Z_Odometry2, self).__init__(stateList = stateList, *args, **kwargs )
 
 	def update(self, **kwargs):
 		super(Z_Odometry2, self).update( **kwargs )
@@ -183,8 +246,8 @@ class Z_Odometry2(BasicProcess, object):
 class SO3(BasicProcess, object):
 	"""docstring for SO3"""
 	def __init__(self, *args, **kwargs):
-		self._stateList = ['orientation.w', 'orientation.x', 'orientation.y', 'orientation.z']
-		super(SO3, self).__init__(stateList = self._stateList, *args, **kwargs)
+		stateList = ['orientation.w', 'orientation.x', 'orientation.y', 'orientation.z']
+		super(SO3, self).__init__(stateList = stateList, *args, **kwargs)
 		
 	def update(self, **kwargs):
 		super(SO3, self).update( **kwargs )
@@ -241,6 +304,8 @@ def process_test( process_object ):
 
 	print 'P', process.Jacobian
 	print 'R', process.Covariance
+
+	print vars(process).keys()
 
 def main():
 	process_test( XY_Odometry1( Ts = 1 ) )

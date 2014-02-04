@@ -18,13 +18,17 @@ class SensorFusion(Quadrotor, object):
 	def __init__(self, **kwargs):
 		super(SensorFusion, self).__init__(** kwargs)
 
-		self._stateList = list()
-		self._measurementList = list()
+		self.init_processes()
+		self.init_sensors()
+			
+	def __len__(self):
 
+		return len(self.stateList)
 
+	def init_processes(self):
 		for process in self.processes:
-			self._stateList += process._stateList # makes global state list 
-			if hasattr(self, 'X'): # initializes X 
+			self.stateList += process.stateList # makes global state list 
+			if self.X is not None: # initializes X 
 				self.X = np.bmat([ [self.X], [process.X] ])
 
 				self.ProcessJacobian = sp.block_diag(self.ProcessJacobian, process.Jacobian)
@@ -34,33 +38,28 @@ class SensorFusion(Quadrotor, object):
 
 				self.ProcessJacobian = process.Jacobian
 				self.ProcessCovariance = process.Covariance
-			
+
+	def init_sensors(self):
+		for sensor in self.sensors:
+			self.measurementList += sensor.measurementList
+
+		
 
 		for sensor in self.sensors:
-			self._measurementList += sensor._measurementList
-
-		self.MeasurementJacobian = np.matlib.zeros([ len(self._measurementList), len(self._stateList) ])
-
-		for sensor in self.sensors:
-			if hasattr(self, 'Z'):
+			if self.Z is not None:
 				self.Z = np.bmat( [ [self.Z], [sensor.Z] ])
-				self.Residual = np.bmat( [ [ self.Residual], [sensor.Residual] ] )
+				self.StateMap = np.bmat( [ [ self.StateMap], [sensor.StateMap] ] )
 				self.MeasurementCovariance = sp.block_diag(self.MeasurementCovariance, sensor.Covariance)
 			else:
 				self.Z = sensor.Z
-				self.Residual = sensor.Residual
+				self.StateMap = sensor.StateMap
 
 				self.MeasurementCovariance = sensor.Covariance
 
-			for measured_variable in sensor._measurementList:
-				for state in sensor._stateList:
-					self.MeasurementJacobian[self._measurementList.index(measured_variable), self._stateList.index(state) ] = sensor.Jacobian[sensor._measurementList.index(measured_variable), sensor._stateList.index(state) ]
-			
-					# self.MeasurementJacobian[ self._measurementList.index(measured_variable) ][ self._stateList.index(state) ] = sensor.Jacobian[ sensor._measurementList.index(measured_variable) ][ sensor._stateList.index(state) ]
-			
-
-		self.ErrorCovariance = np.matlib.zeros([len(self._stateList), len(self._stateList)])
-
+			self.MeasurementJacobian = np.matlib.zeros([ len(self.measurementList), len(self.stateList) ])
+			for measured_variable in sensor.measurementList:
+				for state in sensor.stateList:
+					self.MeasurementJacobian[self.measurementList.index(measured_variable), self.stateList.index(state) ] = sensor.Jacobian[sensor.measurementList.index(measured_variable), sensor.stateList.index(state) ]
 
 	def predict(self):
 		""" Predicts state X with quadrotor physics 
@@ -86,7 +85,7 @@ class SensorFusion(Quadrotor, object):
 
 		i = 0
 		for process in self.processes:
-			process_size = len(process._stateList)
+			process_size = len(process.stateList)
 			print process_size
 			print self.X 
 			print (i + 1 + process_size)
@@ -106,7 +105,7 @@ class SensorFusion(Quadrotor, object):
 		# np.dot(np.dot(self.ProcessJacobian, self.ErrorCovariance), np.transpose(self.ProcessJacobian)) + self.ProcessCovariance
 		# P = J . P . J' + Q
 
-		# return self.X, self._stateList
+		# return self.X, self.stateList
 
 		""" 
 
@@ -117,37 +116,39 @@ class SensorFusion(Quadrotor, object):
 		Corrects Error Estitmation
 		"""
 
-		# This generates the Global Z and Residual vectors , sensor Z and Residual vectors are already generated
+		# This generates the Global Z and StateMap vectors , sensor Z and StateMap vectors are already generated
 		i = 0
 		for sensor in self.sensors:
 			self.Z[i:i+len(sensor)] = sensor.Z 
-			self.Residual[i:i+len(sensor)] = sensor.Residual
-			print 'Residual', sensor.Residual, self.Residual
+			self.StateMap[i:i+len(sensor)] = sensor.StateMap
+			print 'StateMap', sensor.StateMap, self.StateMap
 			i += len(sensor)
 
-			for measured_variable in sensor._measurementList:
-				for state in sensor._stateList:
-					self.MeasurementJacobian[self._measurementList.index(measured_variable), self._stateList.index(state) ] = sensor.Jacobian[sensor._measurementList.index(measured_variable), sensor._stateList.index(state) ]
+			for measured_variable in sensor.measurementList:
+				for state in sensor.stateList:
+					self.MeasurementJacobian[self.measurementList.index(measured_variable), self.stateList.index(state) ] = sensor.Jacobian[sensor.measurementList.index(measured_variable), sensor.stateList.index(state) ]
 			
 
-		print 'Z', self.Z , 'Residual', self.Residual
+		print 'Z', self.Z , 'StateMap', self.StateMap
 		self.KalmanGain = self.ErrorCovariance * self.MeasurementJacobian.transpose() *  np.linalg.inv( self.MeasurementJacobian * self.ErrorCovariance * self.MeasurementJacobian.transpose() + self.MeasurementCovariance )
 		# K = P . H' . ( H . P . H' + R ) ^ -1; 
 		
-		self.X += self.KalmanGain * ( self.Z - self.Residual)
+		print "Size = ", np.shape(self.KalmanGain)
+		print len(self)
+		self.X += self.KalmanGain * ( self.Z - self.StateMap)
 		# X = X + K . ( Z - h(X) )
 		self.ErrorCovariance = (matlib.eye(np.size( self.X ) ) - self.KalmanGain * self.MeasurementJacobian ) * self.ErrorCovariance
 		# P = ( I - K . H) . P
 
-		self.set_attributes(self.X, self._stateList)
+		self.set_attributes(self.X, self.stateList)
 
 
 		"""
 		i = 0
 		for sensor in sensors:
-			sensor_size = len(sensor._measurementList)
+			sensor_size = len(sensor.measurementList)
 			self.Z[ i:(i + 1 + sensor_size) ][0] = sensor.Z 
-			self.Residual[ i:(i + 1 + sensor_size) ][0] = sensor.Residual
+			self.StateMap[ i:(i + 1 + sensor_size) ][0] = sensor.StateMap
 
 			self.MeasurementJacobian[ i:(i + 1 + sensor_size) ][ i:(i + 1 + sensor_size) ] = sensor.Jacobian
 
@@ -157,7 +158,7 @@ class SensorFusion(Quadrotor, object):
 		# self.Z = kwargs.get('Z', self.Z)
 		# self.MeasurementJacobian = kwargs.get('Jacobian', self.MeasurementJacobian)
 		# self.MeasurementCovariance = kwargs.get('Covariance', self.MeasurementCovariance)
-		# self.Residual = kwargs.get('Residual', self.Residual)
+		# self.StateMap = kwargs.get('StateMap', self.StateMap)
 
 		# K1 = np.dot( self.ErrorCovariance, np.transpose(self.MeasurementJacobian) )
 		# K2 = np.dot( np.dot( self.MeasurementJacobian, self.ErrorCovariance ), np.transpose(self.MeasurementJacobian) ) + self.MeasurementCovariance
@@ -173,9 +174,30 @@ class SensorFusion(Quadrotor, object):
 		# self.ErrorCovariance = np.dot( np.identity( np.size(self.X) ) - np.dot( self.KalmanGain, self.MeasurementJacobian ), self.ErrorCovariance )
 		# P = ( I - K . H) . P
 
-		# return self.X, self._stateList
+		# return self.X, self.stateList
 		"""
-	"""
+	
+	# Object Properties
+	@property
+	def stateList(self):
+		return self.properties.get('stateList', list())
+	@stateList.setter
+	def stateList(self, new_list):
+		self.properties['stateList'] = new_list
+	@stateList.deleter
+	def stateList(self):
+		del self.properties['stateList']
+
+	@property
+	def measurementList(self):
+		return self.properties.get('measurementList', list())
+	@measurementList.setter
+	def measurementList(self, new_list):
+		self.properties['measurementList'] = new_list
+	@measurementList.deleter
+	def measurementList(self):
+		del self.properties['measurementList']
+
 	@property
 	def X(self):
 		return self.properties.get('X', None)
@@ -197,18 +219,38 @@ class SensorFusion(Quadrotor, object):
 		del self.properties['Z']
 
 	@property
-	def Residual(self):
-		return self.properties.get('Residual', None)
-	@Residual.setter
-	def Residual(self, Residual):
-		self.properties['Residual'] = Residual
-	@Residual.deleter
-	def Residual(self):
-		del self.properties['Residual']
+	def StateMap(self):
+		return self.properties.get('StateMap', None)
+	@StateMap.setter
+	def StateMap(self, StateMap):
+		self.properties['StateMap'] = StateMap
+	@StateMap.deleter
+	def StateMap(self):
+		del self.properties['StateMap']
+
+	@property 
+	def ProcessJacobian(self):
+		return self.properties.get('ProcessJacobian', None)
+	@ProcessJacobian.setter
+	def ProcessJacobian(self, Q):
+		self.properties['ProcessJacobian'] = Q
+	@ProcessJacobian.deleter
+	def ProcessJacobian(self):
+		del self.properties['ProcessJacobian']
+
+	@property 
+	def MeasurementJacobian(self):
+		return self.properties.get('MeasurementJacobian', None)
+	@MeasurementJacobian.setter
+	def MeasurementJacobian(self, Q):
+		self.properties['MeasurementJacobian'] = Q
+	@MeasurementJacobian.deleter
+	def MeasurementJacobian(self):
+		del self.properties['MeasurementJacobian']
 
 	@property 
 	def ErrorCovariance(self):
-		return self.properties.get('ErrorCovariance', None)
+		return self.properties.get('ErrorCovariance', np.matlib.zeros([len(self), len(self)]) )
 	@ErrorCovariance.setter
 	def ErrorCovariance(self, P):
 		self.properties['ErrorCovariance'] = P
@@ -238,34 +280,13 @@ class SensorFusion(Quadrotor, object):
 
 	@property
 	def KalmanGain(self):
-		return self.properties.get('KalmanGain', None)
+		return self.properties.get('KalmanGain', np.matlib.zeros([len(self), len(self)]))
 	@KalmanGain.setter
 	def KalmanGain(self, K):
 		self.properties['KalmanGain'] = K 
 	@KalmanGain.deleter
 	def KalmanGain(self):
 		del self.properties['KalmanGain']
-
-	@property
-	def sensors(self):
-		return self.properties.get('sensors', None)
-	@sensors.setter
-	def sensors(self, sensors):
-		self.properties['sensors'] = sensors
-	@sensors.deleter
-	def sensors(self):
-		del self.properties['sensors']
-
-	@property
-	def processes(self):
-		return self.properties.get('processes', None)
-	@processes.setter
-	def processes(self, processes):
-		self.properties['processes'] = processes
-	@processes.deleter
-	def processes(self):
-		del self.properties['processes']
-	"""
 
 					
 def main():
@@ -303,6 +324,8 @@ def main():
 
 	print"Predict"; Fusion.predict(); print Fusion.X; print Fusion.position
 	print"Correct";Fusion.correct(); print Fusion.X; print Fusion.position
+	
+	print vars(Fusion)
 
 
 	# print 'Z =', Fusion.Z

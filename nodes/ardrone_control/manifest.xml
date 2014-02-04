@@ -1,10 +1,13 @@
 <package>
+  <version>0.0.1</version>
   <description brief="ardrone_control">
 
-     ardrone_control
+     This package provides trajectory control, state estimation and sensor fusion of the AR.Drone 
+     It works both experimentally and in simulation
 
   </description>
-  <author>sebastiancuri</author>
+  <author>Sebastian Curi</author>
+  <maintainer email="sebascuri@gmail.com">Sebastian Curi</maintainer>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/ardrone_control</url>

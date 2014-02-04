@@ -1,7 +1,7 @@
 #!/users/sebastiancuri/anaconda/bin/python
 #!/usr/bin/env python
 
-from math import pi
+from math import pi, sqrt
 try:
 	import tf
 except ImportError:
@@ -20,8 +20,10 @@ class BasicObject(object):
 			self.properties[key] = value
 	
 	def __str__(self):
-
-		return str(vars(self)) 
+		try:
+			return str(self.properties) #str(vars(self)) 
+		except AttributeError:
+			return str(vars(self))
 		
 	def __repr__(self):
 
@@ -29,10 +31,10 @@ class BasicObject(object):
 
 	def __len__(self):
 
-		return len(vars(self)) 
+		return len(self.properties)  # len(vars(self)) 
 
 	def __iter__(self):
-		for key, value in vars(self).iteritems():
+		for key, value in self.properties.items():
 			yield key, value 
 
 	def __eq__(self, data):
@@ -59,17 +61,28 @@ class SixDofObject(BasicObject, object):
 	"""docstring for SixDofObject:
 	This object has properties for each of the 6 degrees of freedom"""
 	def __init__(self, **kwargs):
+		self.properties = dict( 
+			x = kwargs.get('x', 0.0), 
+			y = kwargs.get('y', 0.0),
+			z = kwargs.get('z', 0.0),
+			yaw = kwargs.get('yaw', 0.0),
+			pitch = kwargs.get('pitch', 0.0),
+			roll = kwargs.get('roll', 0.0)
+			)
+		"""
 		self.x = kwargs.get('x', 0.0)
 		self.y = kwargs.get('y', 0.0)
 		self.z = kwargs.get('z', 0.0)
 		self.yaw = kwargs.get('yaw', 0.0)
 		self.pitch = kwargs.get('pitch', 0.0)
 		self.roll = kwargs.get('roll', 0.0)
+		"""
 
 		# self.properties = dict(x = 0.0, y = 0.0, z = 0.0, yaw = 0.0, pitch = 0.0, roll = 0.0)
 		# super(SixDofObject, self).__init__(**kwargs)
 	
-	"""	
+	# Object Properties
+	
 	@property 
 	def x(self):
 		return self.properties.get('x', 0)
@@ -129,15 +142,20 @@ class SixDofObject(BasicObject, object):
 	@yaw.deleter
 	def yaw(self):
 		del self.properties['yaw']
-	"""
-
+	
 class Quaternion(BasicObject, object):
 	def __init__(self, **kwargs):
-		# self.properties = dict( x = 0.0, y = 0.0, z = 0.0, w = 1.0 )
-		self.x = kwargs.get('x', 0.0)
-		self.y = kwargs.get('y', 0.0)
-		self.z = kwargs.get('z', 0.0)
-		self.w = kwargs.get('w', 1.0)
+		self.properties = dict( 
+			x = kwargs.get('x', 0.0), 
+			y = kwargs.get('y', 0.0), 
+			z = kwargs.get('z', 0.0), 
+			w = kwargs.get('w', 1.0) )
+
+		self.normalize()
+		# self.x = kwargs.get('x', 0.0)
+		# self.y = kwargs.get('y', 0.0)
+		# self.z = kwargs.get('z', 0.0)
+		# self.w = kwargs.get('w', 1.0)
 		# super(Quaternion, self).__init__(**kwargs)
 
 	def set_euler(self, *args, **kwargs):
@@ -165,11 +183,21 @@ class Quaternion(BasicObject, object):
 		self.z = quaternion[2]
 		self.w = quaternion[3]
 
+	def normalize(self):
+		norm = 0
+		for value in self.properties.values():
+			norm += value ** 2
 
-	"""
+		norm = sqrt(norm)
+
+		for key, value in self.properties.items():
+			setattr(self, key, value/norm )
+
+	# Object Properties
+
 	@property 
 	def x(self):
-		return self.properties.get('x', None)
+		return self.properties.get('x', 0.0)
 	@x.setter 
 	def x(self, x):
 		self.properties['x'] = x
@@ -179,7 +207,7 @@ class Quaternion(BasicObject, object):
 
 	@property 
 	def y(self):
-		return self.properties.get('y', None)
+		return self.properties.get('y', 0.0)
 	@y.setter 
 	def y(self, y):
 		self.properties['y'] = y
@@ -189,7 +217,7 @@ class Quaternion(BasicObject, object):
 
 	@property 
 	def z(self):
-		return self.properties.get('z', None)
+		return self.properties.get('z', 0.0)
 	@z.setter 
 	def z(self, z):
 		self.properties['z'] = z
@@ -199,81 +227,71 @@ class Quaternion(BasicObject, object):
 
 	@property 
 	def w(self):
-		return self.properties.get('w', None)
+		return self.properties.get('w', 1.0)
 	@w.setter 
 	def w(self, w):
 		self.properties['w'] = w
 	@w.deleter
 	def w(self):
 		del self.properties['w']
-	"""
-
-class StateMapping(object):
-	Unkown = 0
-	Inited = 1
-	Landed = 2
-	Flying = 3
-	Hovering = 4
-	Test = 5
-	TakingOff = 6
-	Flying = 7
-	Landed = 8
-	Looping = 9
 						
 class State(BasicObject, object):
 	"""docstring for State"""
+	MAP = {0 : 'Unknown', 1 : 'Inited', 2 : 'Landed', 3 : 'Flying', 4 : 'Hovering', 5 : 'Test', 6 : 'Taking off', 7 : 'Flying', 8 : 'Landed', 9 : 'Looping'}
 	def __init__(self, state = 2):
 		# super(State, self).__init__()
-		self._STATES = {0 : 'Unknown', 1 : 'Inited', 2 : 'Landed', 3 : 'Flying', 4 : 'Hovering', 5 : 'Test', 6 : 'Taking off', 7 : 'Flying', 8 : 'Landed', 9 : 'Looping'}
-		
+		self.properties = dict( state = state)
 		self.set_state(state)
 		
 	def __str__(self):
+
 		return str(self.state)
 
 	def __eq__(self, data):
 		if type(data) == str:
 			return str(self.state) is data
 		elif type(data) == int:
-			return str(self.state) is self._STATES[data]
+			return str(self.state) is State.MAP[data]
 
 	def set_state(self, state):
-		if (state in self._STATES.values()) or (state in self._STATES.keys()):
+		if (state in State.MAP.values()) or (state in State.MAP.keys()):
 			if type(state) == int:
-				self.state = self._STATES[state]
+				self.state = State.MAP[state]
 			else:
 				self.state = state
 		else:
-			self.state = self._STATES[0]
+			self.state = State.MAP[0]
 			print 'State not recognized, setting it to Unkown'
 
-	"""
+	# Object Properties
 	@property 
 	def state(self):
-		return self.state 
+		return self.properties.get('state', State.MAP[0])
 	@state.setter
 	def state(self, state):
-		self.set_state(state)
+		self.properties['state'] = state
 	@state.deleter
 	def state(self):
-		del self.state
-	"""
+		del self.properties['state']
 	
 class Motor(BasicObject, object):
 	"""docstring for Motors"""
 	def __init__(self, **kwargs):
-		self.pwm = kwargs.get('pwm', 0)
+
+		self.properties = dict( pwm = kwargs.get('pwm', 0) )
 
 	def __str__(self):
+
 		return str(self.pwm) 
 
 	def set_pwm(self, pwm):
+
 		self.pwm = pwm
 	
-	"""
+	# Object Properties	
 	@property 
 	def pwm(self):
-		return self.properties.get('pwm', 0)
+		return self.properties.get('pwm', 0.0)
 	@pwm.setter
 	def pwm(self, pwm):
 		self.properties['pwm'] = pwm
@@ -281,7 +299,7 @@ class Motor(BasicObject, object):
 	@pwm.deleter
 	def pwm(self):
 		del self.properties['pwm']
-	"""
+	
 
 def iterate_test():
 	obj = SixDofObject()
@@ -298,6 +316,8 @@ def iterate_test():
 
 	for i in obj:
 		print i
+
+	print len(obj)
 	
 def state_test():
 
@@ -334,6 +354,8 @@ def motor_test():
 	motor.pwm = 25
 	print motor
 	print motor.pwm
+
+	print vars(motor)
 	
 def sixdofobject_test():
 	print "SixDofObject Test"
@@ -349,6 +371,10 @@ def sixdofobject_test():
 def quaternion_test():
 	quat = Quaternion()
 	print quat.w
+	print vars(quat)
+	# help(quat)
+	print quat
+	print repr(quat)
 
 def main():
 	print 'Ok'
@@ -360,7 +386,5 @@ def main():
 	motor_test()
 	sixdofobject_test()
 	quaternion_test()
-
-
 
 if __name__ == '__main__': main()

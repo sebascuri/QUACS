@@ -10,9 +10,23 @@ import Sensors
 class Quadrotor(BasicObject, object):
 	"""docstring for Quadrotor"""
 	def __init__(self, **kwargs):
-		self.properties = dict()
+		self.properties = dict(
+			position = kwargs.get('position', SixDofObject() ),
+			orientation = kwargs.get('orientation', Quaternion() ) ,
+			velocity = kwargs.get('velocity', SixDofObject() ),
+			acceleration = kwargs.get('acceleration', SixDofObject() ),
+			battery = kwargs.get('battery', 100 ) ,
+			state = kwargs.get('state', State()) ,
+			motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] )  ,
+			processes = kwargs.get('processes', list() ),
+			sensors = kwargs.get('sensors', list() )
+			)
+
+		
+
+		"""
 		self.position = kwargs.get('position', SixDofObject() )
-		self.orientation =kwargs.get('orientation', Quaternion() ) 
+		self.orientation = kwargs.get('orientation', Quaternion() ) 
 		self.velocity = kwargs.get('velocity', SixDofObject() )
 		self.acceleration = kwargs.get('acceleration', SixDofObject() )
 		self.battery = kwargs.get('battery', 100 )
@@ -20,6 +34,7 @@ class Quadrotor(BasicObject, object):
 		self.motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] ) 
 		self.processes = kwargs.get('processes', list() )
 		self.sensors = kwargs.get('sensors', list() )
+		"""
 		"""
 		self.properties['position'] = SixDofObject()
 		self.properties['orientation'] = Quaternion()
@@ -49,6 +64,7 @@ class Quadrotor(BasicObject, object):
 			i += 1
 
 	def set_state(self, state):
+		
 		self.state.set_state(state)
 
 	def set_pwm(self, *args):
@@ -63,7 +79,96 @@ class Quadrotor(BasicObject, object):
 				self.motors[i].set_pwm( pwm )
 				i +=1 
 
+	@property
+	def position(self):
+		return self.properties.get('position', SixDofObject())
+	@position.setter
+	def position(self, position):
+		self.properties['position'] = position
+	@position.deleter
+	def position(self):
+		del self.properties['position']	
 
+	@property
+	def orientation(self):
+		return self.properties.get('orientation', Quaternion())
+	@orientation.setter
+	def orientation(self, orientation):
+		self.properties['orientation'] = orientation
+	@orientation.deleter
+	def orientation(self):
+		del self.properties['orientation']	
+
+	@property
+	def velocity(self):
+		return self.properties.get('velocity', SixDofObject())
+	@velocity.setter
+	def velocity(self, velocity):
+		self.properties['velocity'] = velocity
+	@velocity.deleter
+	def velocity(self):
+		del self.properties['velocity']	
+
+	@property
+	def acceleration(self):
+		return self.properties.get('acceleration', SixDofObject())
+	@acceleration.setter
+	def acceleration(self, acceleration):
+		self.properties['acceleration'] = acceleration
+	@acceleration.deleter
+	def acceleration(self):
+		del self.properties['acceleration']	
+
+
+	@property
+	def battery(self):
+		return self.properties.get('battery', 100.0)
+	@battery.setter
+	def battery(self, battery):
+		self.properties['battery'] = battery
+	@battery.deleter
+	def battery(self):
+		del self.properties['battery']	
+
+	@property
+	def state(self):
+		return self.properties.get('state', State())
+	@state.setter
+	def state(self, state):
+		self.set_state(state)
+	@state.deleter
+	def state(self):
+		del self.properties['state']	
+
+	@property
+	def motors(self):
+		return self.properties.get('motors', [Motor(), Motor(), Motor(), Motor()])
+	@motors.setter
+	def motors(self, motors):
+		self.set_pwm(motors)
+	@motors.deleter
+	def motors(self):
+		del self.properties['motors']	
+
+	@property
+	def processes(self):
+		return self.properties.get('processes', list())
+	@processes.setter
+	def processes(self, processes):
+		self.properties['processes'] = processes
+	@processes.deleter
+	def processes(self):
+		del self.properties['processes']	
+
+	@property
+	def sensors(self):
+		return self.properties.get('sensors', list())
+	@sensors.setter
+	def sensors(self, sensors):
+		self.properties['sensors'] = sensors
+	@sensors.deleter
+	def sensors(self):
+		del self.properties['sensors']
 
 def quadrotor_test():
 	print "Quadrotor Test"
