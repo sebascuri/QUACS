@@ -13,7 +13,7 @@
 	- [Joystick Command](#joystick-command)
 	- [Text File Command](#text-file-command)
 - [Modifications](#modifications)
-- [ToDo](#todo)
+- [To do](#to-do)
 
 ## Introduction
 This is a repository of a ROS package that controls the parrot AR.DRONE.
@@ -61,26 +61,41 @@ It publishes take-off, land and reset messages to handle Drone State
 
 ## Usage
 ### Keyboard Command
+To run simulator with keyboard trajectory control
 ```bash
-$ roslaunch ardrone_control ardrone_PIDcontrol_keyboard.launch
+$ roslaunch ardrone_control keyboard_PID_Control.launch
 ```
-### Joystick Command
-To-Do
+To record data in .bag files add record argument. To plot realtime data add plot argument.  
+```bash
+$ roslaunch ardrone_control keyboard_PID_Control.launch record:=True plot:=True
+```
 
-### Text File Command
+### Joystick Command
+To run simulator with joystick trajectory control
+```bash
+$ roslaunch ardrone_control joystick_PID_Control.launch
+```
+To record data in .bag files add record argument. To plot realtime data add plot argument, however in tested machines the simulator crashes.  
+```bash
+$ roslaunch ardrone_control joystick_PID_Control.launch record:=True
+```
+
+### Command-Line Controlling
 To-Do
 
 ## Modifications
 To add your own module any module of the *.launch file can be commented 
 
-## ToDo
+## To do
 
-* Implement a handler for periodicity in yaw error 
-<p align="center">
+* [ ] Implement a handler for periodicity in yaw error <p align="center">
 ![equation] (http://latex.codecogs.com/gif.latex?%24%20%5Cleft%28%20e_%7B%5Cpsi%7D%20%3D%20%5Cmin_K%20%7C%5Cpsi%20-%20%5Cpsi_%7Bgoal%7D%20&plus;%202%20K%20%5Cpi%20%7C%20%5Cright%20%29%20%24)
 </p>
-* Modify controller so as to actuate only when Drone is Flying 
-* Implement a PS3 Joystick Module
-* Add GPS-Sensor Measurements and Kalman Filter for Estimation
-* Add a new controller
-* Make a GUI that shows Drone Status
+
+
+- [ ] Modify controller so as to actuate only when Drone is Flying 
+- [x] Implement a PS3 Joystick Module
+- [ ] Add GPS-Sensor Measurements and Kalman Filter for Estimation
+- [ ] Add a new controller
+- [ ] Make a GUI that shows Drone Status
+
