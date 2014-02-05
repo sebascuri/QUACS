@@ -1,0 +1,10 @@
+<launch>
+
+	<group ns="Plot">
+		<!-- plot trajectory and estimated position -->
+		<node pkg="rxtools" type="rxplot" name="plot_set_point" args="/ardrone/trajectory/pose/pose/position/x:y:z,/ardrone/sensorfusion/navdata/pose/pose/position/x:y:z" />
+		<!-- plot true position and estimated position -->
+		<node pkg="rxtools" type="rxplot" name="plot_error" args="/ground_truth/state/pose/pose/position/x:y:z,/ardrone/sensorfusion/navdata/pose/pose/position/x:y:z" />
+    </group>
+
+</launch>

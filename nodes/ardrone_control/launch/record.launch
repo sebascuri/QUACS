@@ -1,0 +1,18 @@
+<launch>
+
+	<group ns="ProcessedData">
+		<node name="sensorfusion" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/sensorfusion /ardrone/sensorfusion/navdata"/>   
+		<node name="trajectory" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/trajectory /ardrone/trajectory"/>  
+		<node name="cmd_vel" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/cmd_vel /ardrone/cmd_vel"/> 
+
+	</group>
+
+	<group ns="RawData">
+		<node name="navdata" pkg="rosbag" type="record" args=" -o $(find ardrone_control)/bagfiles/navdata /ardrone/navdata"/> 
+		<node name="imu_raw" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/imu_raw /ardrone/imu_raw"/> 
+		<node name="sonar_heigh" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/sonar_heigh /ardrone/sonar_heigh"/> 
+		<node name="gps" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/gps /fix"/> 
+		<arg name="simulator" default="true"/>
+		<node name="ground_truth" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/ground_truth /ground_truth/state" if="$(arg simulator)"/> 
+	</group>
+</launch>
