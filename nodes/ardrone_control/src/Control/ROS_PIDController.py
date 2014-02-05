@@ -22,7 +22,12 @@ Command_Time = 0.01;
 g = 9.81;
 
 class DroneController(object):
-	"""docstring for DroneController"""
+	"""docstring for DroneController
+
+	There is an array of position controllers and an array of orientation controllers 
+	There is a yaw property that maps from local to world coordinates. A tf is planned. 
+
+	"""
 	def __init__(self):
 		super(DroneController, self).__init__()
 		Gains = rospy.get_param('Gains', dict( X = dict(P = 1.0, I = 0.0, D = 0.0), 
@@ -41,7 +46,25 @@ class DroneController(object):
 	
 
 class ROS_Handler(DroneController, object):
-	"""docstring for ROS_Handler"""
+	"""docstring for ROS_Handler
+
+	Subscribed to:
+		ardrone/sensorfusion/navdata -> reads estimation of the ardrone state 
+		ardrone/trajectory -> reads desired set point  
+		controller/state -> reads the controller state 
+
+	Publishes to:
+		ardrone/cmd_vel -> Actuates on ardrone velocity only in a State 
+			It is called by a Timer
+			Transformed to local coordinates with a self.yaw properties -> tf will be used.   
+
+	Angles_MAP is just a map from [x,y,z] keys to the index of tf.transformations.euler_from_quaternion 
+	"""
+
+	Angles_MAP = dict( 
+		x = 0, 
+		y = 1, 
+		z = 2)
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 
@@ -53,7 +76,7 @@ class ROS_Handler(DroneController, object):
 
 		self.command_velocity = rospy.Publisher('/cmd_vel', Twist)
 
-		self.angles_map = dict(x = 0, y = 1 , z = 2)
+		# self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
 	def RecieveOdometry( self, data , method):
 		for key in self.position_control.keys():
@@ -61,10 +84,10 @@ class ROS_Handler(DroneController, object):
 
 		angles = tf.transformations.euler_from_quaternion( [data.pose.pose.orientation.x , data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w] )
 		for key in self.orientation_control.keys():
-			getattr(self.orientation_control[key], method) ( position = angles[ self.angles_map[key] ] , velocity = getattr(data.twist.twist.angular, key ) )
+			getattr(self.orientation_control[key], method) ( position = angles[ self.Angles_MAP[key] ] , velocity = getattr(data.twist.twist.angular, key ) )
 
 		if method == 'set_input':
-			self.yaw = angles[ self.angles_map['z'] ]
+			self.yaw = angles[ self.Angles_MAP['z'] ]
 
 	def Actuate(self, time):
 		twist = Twist()

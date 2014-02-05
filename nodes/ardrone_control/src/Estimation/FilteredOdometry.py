@@ -23,7 +23,21 @@ Command_Time = 0.005;
 g = 9.81;
 
 class SensorFusion(Quadrotor, object):
-    """docstring for SensorFusion"""
+    """docstring for SensorFusion
+    Subscribed to:
+        ardrone/navdata -> reads ardrone raw navdata 
+        fix -> reads gps 
+        ardrone/imu -> reads imu for complementary filter 
+        ardrone/sonar_height -> for Z proximity 
+
+    Publishes to:
+        /ardrone/sensorfusion/navdata -> Odometry estimated state of ardrone 
+            It is called by a Timer
+            Published as a tf too. 
+
+    low_pass_filters dictionary from navdata entries to corresponding butterworth filter 
+
+    """
     def __init__(self, **kwargs ):
         super(SensorFusion, self).__init__(**kwargs)
         rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
@@ -33,7 +47,8 @@ class SensorFusion(Quadrotor, object):
 
         self.name = kwargs.get('name', "/local")
 
-        self.low_pass_filters = dict( vz = DigitalFilter( a = [-2.369513007182038, 2.313988414415879, -1.054665405878567, 0.187379492368185], b = [0.004824343357716, 0.019297373430865, 0.028946060146297, 0.019297373430865, 0.004824343357716]),
+        self.low_pass_filters = dict( 
+            vz = DigitalFilter( a = [-2.369513007182038, 2.313988414415879, -1.054665405878567, 0.187379492368185], b = [0.004824343357716, 0.019297373430865, 0.028946060146297, 0.019297373430865, 0.004824343357716]),
             rotZ = DigitalFilter( a = [-2.369513007182038, 2.313988414415879, -1.054665405878567, 0.187379492368185], b = [0.004824343357716, 0.019297373430865, 0.028946060146297, 0.019297373430865, 0.004824343357716]),
             ax = DigitalFilter( a = [-1.955578240315035, 0.956543676511203], b = [0.000241359049041961, 0.000482718098083923, 0.000241359049041961]),
             ay = DigitalFilter( a = [-1.955578240315035, 0.956543676511203], b = [0.000241359049041961, 0.000482718098083923, 0.000241359049041961]),
@@ -49,7 +64,6 @@ class SensorFusion(Quadrotor, object):
     def Command(self, time):
         self.Talk()
         self.predict()
-
 
     def Talk(self):
         msgs = Odometry()
@@ -83,7 +97,6 @@ class SensorFusion(Quadrotor, object):
             msgs.child_frame_id, 
             msgs.header.frame_id)
 
-
     def ReceiveNavdata(self, navdata):
 
         for key in self.low_pass_filters.keys():
@@ -97,8 +110,7 @@ class SensorFusion(Quadrotor, object):
         
         self.set_state(navdata.state)
         self.battery = navdata.batteryPercent
-
-        
+     
     def ReceiveGPS(self, gpsdata):
         pass
 

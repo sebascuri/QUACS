@@ -2,7 +2,13 @@ from BasicObject import BasicObject
 from collections import deque
 
 class BasicController(BasicObject, object):
-	"""docstring for Controller"""
+	"""docstring for Controller
+
+	It has 4 properties that are a dict of deques (fixed length rapid-access lists):
+		input, output, error and set point. 
+		each dict has two keys, position and velocity so as to not derive the entry. 
+
+	"""
 	def __init__(self, **kwargs):
 		super(BasicController, self).__init__( **kwargs )
 
@@ -118,7 +124,10 @@ class BasicController(BasicObject, object):
 
 
 class PID_Controller(BasicController, object):
-	"""docstring for Controller"""
+	"""docstring for PID_Controller
+		The PID_Controller is implemented in parallel form. 
+		if it is saturating integration stops so it is not unstabilized. . 
+	"""
 	def __init__(self, **kwargs):
 		super(PID_Controller, self).__init__( **kwargs )
 

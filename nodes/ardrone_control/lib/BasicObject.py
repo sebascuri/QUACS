@@ -9,7 +9,13 @@ except ImportError:
 
 
 class BasicObject(object):
-	"""docstring for BasicObject"""
+	"""docstring for BasicObject
+	Object that has standard methods such as get_property or set_properties
+
+	overrides or starts standard attributes such as str, rerp, len, iter and eq for future control
+
+	init method starts or assigns to properties kwargs items.
+	"""
 	def __init__(self, **kwargs):
 		super(BasicObject, self).__init__()
 
@@ -49,10 +55,10 @@ class BasicObject(object):
 
 		return self.properties.get(key, None)
 
-	def set_attribute(self, *args, **kwargs):
+	def set_properties(self, *args, **kwargs):
 		if len(args) == 1:
 			if type(args[0]) == dict:
-				self.set_attribute(** args[0])
+				self.set_properties(** args[0])
 
 		for key, value in kwargs.items():
 			setattr(self, key, value)
@@ -144,6 +150,11 @@ class SixDofObject(BasicObject, object):
 		del self.properties['yaw']
 	
 class Quaternion(BasicObject, object):
+	"""docstring for Quaternion 
+	Object that has x,y,z,w properties for each quaternion. 
+	Has a method that normalizes and entry 
+	Has a method that from input euler angles it assigns the quaternion
+	"""
 	def __init__(self, **kwargs):
 		self.properties = dict( 
 			x = kwargs.get('x', 0.0), 
@@ -236,9 +247,10 @@ class Quaternion(BasicObject, object):
 		del self.properties['w']
 						
 class State(BasicObject, object):
-	"""docstring for State"""
-	#MAP = {0 : 'Unknown', 1 : 'Inited', 2 : 'Landed', 3 : 'Flying', 4 : 'Hovering', 5 : 'Test', 6 : 'Taking off', 7 : 'Flying', 8 : 'Landed', 9 : 'Looping'}
-	def __init__(self, state = 2):
+	"""docstring for State 
+	Object that can take a MAP of states and handles key and name interaction
+	"""
+	def __init__(self, state = 0):
 		# super(State, self).__init__()
 		self.properties = dict( state = state)
 		self.set_state(state)
@@ -298,7 +310,9 @@ class ControllerState(State, object):
 
 
 class Motor(BasicObject, object):
-	"""docstring for Motors"""
+	"""docstring for Motors
+	Simple object to read pwm of each motor. 
+	"""
 	def __init__(self, **kwargs):
 
 		self.properties = dict( pwm = kwargs.get('pwm', 0) )
@@ -419,7 +433,7 @@ def sixdofobject_test():
 	position = SixDofObject()
 	position.x = 2.0
 	position.yaw = pi/4
-	position.set_attribute(dict(y = 4.0, pitch = -30))
+	position.set_properties(dict(y = 4.0, pitch = -30))
 	print position
 	print position.x	
 	print position.yaw

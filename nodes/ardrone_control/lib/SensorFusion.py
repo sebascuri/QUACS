@@ -13,8 +13,12 @@ from Quadrotor import Quadrotor
 # from BasicObject import BasicObject
 
 class SensorFusion(Quadrotor, object):
-	"""docstring for SensorFusion"""
-	# def __init__(self, ErrorCovariance = np.zeros([6,6]), ProcessCovariance = 0.0003 * np.identity(6), MeasurementCovariance = 0.6  * np.identity(6), **kwargs):
+	"""docstring for SensorFusion:
+	Fuses a big list of processes and sensors, 
+
+	Predicts using the processes, 
+	Corrects using the sensors and a Kalman Filter 
+	"""
 	def __init__(self, **kwargs):
 		super(SensorFusion, self).__init__(** kwargs)
 
@@ -293,7 +297,7 @@ def main():
 	print "New Test"
 	Ts = 1
 	Fusion = SensorFusion( sensors = [Sensors.GPS(), Sensors.DummyYaw()], processes = [Process.XY_Odometry1( Ts = Ts ) , Process.Z_Odometry1( Ts = Ts)] )
-	Fusion.velocity.set_attribute( dict(x=2, y = 3, z = -1) )
+	Fusion.velocity.set_properties( dict(x=2, y = 3, z = -1) )
 
 	print Fusion.sensors
 	for sensor in Fusion.sensors:
@@ -304,8 +308,8 @@ def main():
 	print Fusion.Z 
 	for process in Fusion.processes:
 		print repr(process), len(process)
-		print process.update()
-		print process.update()
+		print process.predict()
+		print process.predict()
 
 	print Fusion.X 
 	print Fusion.ProcessJacobian

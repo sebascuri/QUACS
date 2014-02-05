@@ -4,18 +4,25 @@
 import roslib; roslib.load_manifest('ardrone_control')
 import rospy
 
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy #dont forget to rosrun joy joy_node !
 
 from ROS_StateHandler import ROS_Handler
 
-# from PyQt4 import QtGui, QtCore
 from math import pi
 
 import tf
 
 
 class JoystickController(ROS_Handler, object):
-	"""docstring for JoystickController"""
+	"""docstring for JoystickController:
+	MAP is a dict from ROS_Handler method names to a dict with Joy message id. 
+	The joy message id contains the field inside joy and the index of the array of such field. 
+
+	When a message is recieved the method RecieveJoy looks to see if such position is non-empty, 
+	if so it calls the method name and passes as a parameter the value it reads. 
+
+	For buttons the values ar boolean, but for axes are floats from -1 to 1.   
+	"""
 	MAP = dict(
 		X     			= {'axes' : 3}, #Right Analog Up-Down
 		Y    			= {'axes' : 2}, #Right Analog Left-Right
@@ -25,15 +32,19 @@ class JoystickController(ROS_Handler, object):
 		Land            = {'buttons' : 15}, #Square Button
 		Reset       	= {'buttons' : 11}, #R1 Button
 		) 
+	# 
+	#
+
 	def __init__(self, **kwargs):
 		super(JoystickController, self).__init__(**kwargs)
 		rospy.Subscriber('/joy', Joy, callback = self.RecieveJoy)
 
 	def RecieveJoy(self, data):
-		for command, message_data in self.MAP.items():
-			for key, index in message_data.items():
-				if getattr(data, key)[index]: #if non-zero
+		for command, message_data in self.MAP.items(): 
+			for key, index in message_data.items(): 
+				if getattr(data, key)[index]: 
 					getattr(self, command)( getattr(data, key)[index] )
+
 		
 def main():  
 	rospy.init_node('StateHandler', anonymous = True)
