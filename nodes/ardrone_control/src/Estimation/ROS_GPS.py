@@ -24,11 +24,21 @@ g = 9.81;
 
 class ROS_SensorFusion(SensorFusion, object):
     """docstring for ROS_SensorFusion:
-    Object that inherits properties and methods form SensorFusion object and 
-    glues with callbacks with ROS"""
+    
+    Subscribed to:
+        ardrone/navdata -> reads ardrone raw navdata 
+        fix -> reads gps 
+
+    Publishes to:
+        /ardrone/sensorfusion/navdata -> Odometry estimated state of ardrone 
+            It is called by a Timer
+            Published as a tf too. 
+
+    Executes a EKF with /fix and predicted position. 
+    """
+
     def __init__(self, **kwargs):
         super(ROS_SensorFusion, self).__init__(**kwargs)
-        rospy.init_node('/SensorFusion_Odometry', anonymous = True)
 
         # rospy.Subscriber('fix', GPS, callback = self.Listen, callback_args = self.ReceiveGPS)
         rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata) 
@@ -129,6 +139,7 @@ class ROS_SensorFusion(SensorFusion, object):
             i += 1
 
 def main():
+    rospy.init_node('/SensorFusion_Odometry', anonymous = True)
     node = ROS_SensorFusion( sensors = [Sensors.GPS(), Sensors.DummyYaw()], processes = [Process.XY_Odometry1( Ts = Command_Time ) , Process.Z_Odometry1( Ts = Command_Time )] )
     rospy.spin()
 

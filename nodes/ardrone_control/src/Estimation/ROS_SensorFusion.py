@@ -71,9 +71,9 @@ class ROS_SensorFusion(SensorFusion, object):
         self.publisher.publish(msgs)
 
     def ReceiveNavdata(self, navdata):
-        self.position.set_attribute(dict(roll = navdata.rotX * 180.0 / pi, pitch = navdata.rotY * 180.0 / pi, yaw = navdata.rotZ * 180.0 / pi ))
-        self.velocity.set_attribute(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
-        self.acceleration.set_attribute(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
+        self.position.set_properties(dict(roll = navdata.rotX * 180.0 / pi, pitch = navdata.rotY * 180.0 / pi, yaw = navdata.rotZ * 180.0 / pi ))
+        self.velocity.set_properties(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
+        self.acceleration.set_properties(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
         self.orientation.set_euler(roll = navdata.rotX , pitch = navdata.rotY , yaw = navdata.rotZ  )
         
         self.set_state(navdata.state)

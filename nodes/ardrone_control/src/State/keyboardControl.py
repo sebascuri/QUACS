@@ -19,7 +19,15 @@ Step = dict(
 	yaw = pi/20)
 
 class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
-	"""docstring for KeyboardController"""
+	"""docstring for KeyboardController
+	MAP is a dict from ROS_Handler method names to a list of keyboard that should call that method. 
+
+	When a key is pressed the method keyPressEvent calls the method 
+	and passes as a parameter the position of the list in which it appears 
+	so as to increase or decreasethe set point 
+
+	At the same time it inits a simple QTGUI application to handle keyPress events. 
+	"""
 
 	MAP = dict( 
 		X 					= [ QtCore.Qt.Key_Down, QtCore.Qt.Key_Up ],

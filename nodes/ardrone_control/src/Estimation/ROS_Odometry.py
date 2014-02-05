@@ -22,7 +22,20 @@ Command_Time = 0.005;
 g = 9.81;
 
 class SensorFusion(Quadrotor, object):
-    """docstring for SensorFusion"""
+    """docstring for SensorFusion
+    Subscribed to:
+        ardrone/navdata -> reads ardrone raw navdata 
+        fix -> reads gps 
+        ardrone/imu -> reads imu for complementary filter 
+        ardrone/sonar_height -> for Z proximity 
+
+    Publishes to:
+        /ardrone/sensorfusion/navdata -> Odometry estimated state of ardrone 
+            It is called by a Timer
+            Published as a tf too. 
+
+    """
+    
     def __init__(self, **kwargs ):
         super(SensorFusion, self).__init__(**kwargs)
         rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
@@ -31,7 +44,6 @@ class SensorFusion(Quadrotor, object):
         rospy.Subscriber('/ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight )
 
         self.name = kwargs.get('name', "/local")
-
 
         self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
 
@@ -42,7 +54,6 @@ class SensorFusion(Quadrotor, object):
     def Command(self, time):
         self.Talk()
         self.predict()
-
 
     def Talk(self):
         msgs = Odometry()
@@ -76,16 +87,14 @@ class SensorFusion(Quadrotor, object):
             msgs.child_frame_id, 
             msgs.header.frame_id)
 
-
     def ReceiveNavdata(self, navdata):
-        self.position.set_attribute(dict(roll = navdata.rotX * pi/180.0, pitch = navdata.rotY * pi/180.0, yaw = navdata.rotZ * pi/180.0))
-        self.velocity.set_attribute(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
-        self.acceleration.set_attribute(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
+        self.position.set_properties(dict(roll = navdata.rotX * pi/180.0, pitch = navdata.rotY * pi/180.0, yaw = navdata.rotZ * pi/180.0))
+        self.velocity.set_properties(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
+        self.acceleration.set_properties(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
         self.orientation.set_euler(roll = navdata.rotX * pi/180.0 , pitch = navdata.rotY * pi/180.0 , yaw = navdata.rotZ * pi/180.0  )
         
         self.set_state(navdata.state)
         self.battery = navdata.batteryPercent
-
         
     def ReceiveGPS(self, gpsdata):
         pass

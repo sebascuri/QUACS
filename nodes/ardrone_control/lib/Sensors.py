@@ -7,7 +7,6 @@ import numpy.matlib as matlib
 import utm
 # import gps_transforms
 
-
 from BasicObject import BasicObject, SixDofObject, Quaternion
 
 class Sensor(BasicObject, object):
@@ -180,7 +179,10 @@ class Sensor(BasicObject, object):
 class DummyYaw(Sensor, object):
 	measurementList = ['yaw']
 	stateList = ['position.yaw']
-	"""docstring for GPS"""
+	"""docstring for DummyYaw
+	just a Dummy object used for Kalman Filtering Convergence. 
+	Input is a Yaw, Output is the same Yaw 
+	"""
 	def __init__(self, **kwargs):
 		super(DummyYaw, self).__init__(stateList = DummyYaw.stateList, measurementList = DummyYaw.measurementList, **kwargs)
 
@@ -196,23 +198,26 @@ class DummyYaw(Sensor, object):
 	def yaw(self):
 		del self.properties['yaw']
 
-class GPS_2(Sensor, object):
-	"""docstring for GPS"""
-	def __init__(self, latitude = 0, longitude = 0, altitude = 0, **kwargs):
-		measurementList = ['latitude', 'longitude', 'altitude']
-		stateList = ['position.x', 'position.y', 'position.z']
+class GPS(Sensor, object):
+	"""docstring for GPS 
+	x is easting
+	y is northing
+	z is altitude 
+
+	the gps_zero['yaw'] is a rotation around Z between northing, easting to global xyz.
+	"""
+	measurementList = ['latitude', 'longitude', 'altitude']
+	stateList = ['position.x', 'position.y', 'position.z']
+	def __init__(self, **kwargs):
+		super(GPS, self).__init__(stateList = GPS.stateList, measurementList = GPS.measurementList, **kwargs)
 		
+		self.Covariance= 0.4 * matlib.eye( len(self.measurementList) )
 
-		super(GPS, self).__init__(measurementList = measurementList, stateList = stateList, **kwargs)
-		self.Covariance= 0.3 * matlib.eye( len(self.measurementList) )
+		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
 
-		self.gps_zero = dict(latitude = latitude, longitude = longitude, altitude = altitude) 
+		self.gps_zero = dict( x = easting, y = northing, z = self.altitude, yaw = 0)
 
-		self.latitude = latitude
-		self.altitude = altitude
-		self.longitude = longitude
-		self.Z = dict(latitude = latitude, longitude = longitude, altitude = altitude)
-		# self.measure()
+		self.calibrated = False 
 
 	def set_zero(self, *args, **kwargs):
 		if (len(args) is 0) and (len(kwargs) is 0):
@@ -232,57 +237,39 @@ class GPS_2(Sensor, object):
 				for key, value in kwargs.items():
 					self.gps_zero[ key ] = value
 
-	def map(self, **kwargs):
-		super(GPS, self).map(**kwargs)
+	def measure(self, *args, **kwargs):
+		# get values
+		if len(args) == 2: # only latitude and longitude
+			self.altitude = utm.conversion.R 
+			self.latitude = args[0]
+			self.longitude = args[1]
+		elif len(args) == 3: # latitude, longitude and altitude, ordered
+			i = 0
+			for attribute in self.measurementList:
+				setattr(self, attribute, args[i])
+				i += 1
 
-		gps_coord = gps_transforms.cart2gps(x = kwargs.get('x', self.position.x), y = kwargs.get('y', self.position.y), z = kwargs.get('z', self.position.z) ) #+ gps_transforms.R 
-		
-		# self.Residual = self.Z 
-		for key, value in gps_coord.items():
-			self.Residual[self.measurementList.index(key)][0] = value + self.gps_zero[key]
+		elif len(args) == 1:
+			arg = args[0]
+			if type(arg) == dict():
+				self.measure(**args[0])
+			else: # latitude, longitude and altitude, ordered inside a list or tuple
+				i = 0 
+				for attribute in self.measurementList:
+					setattr(self, attribute, arg[i])
+					i += 1
 
-
-	def measure(self, **kwargs):
-		super(GPS, self).measure(**kwargs)
-
-		"""self.Jacobian = np.linalg.inv( np.matrix( [ 
-			[ - r * sin(latitude) * cos(longitude), - r * cos(latitude) * sin(longitude), R * cos(latitude) * cos(longitude) ] ,
-			[ - r * sin(latitude) * sin(longitude),  r * cos(latitude) * cos(longitude), R * cos(latitude) * sin(longitude) ] , 
-			[ r * cos(latitude), 0 , R*sin(latitude) ]  ] ) )		
-		"""
-		R = gps_transforms.R
-		self.Jacobian = np.matrix( [
-			[-(cos(self.longitude)*sin(self.latitude))/(R + self.altitude) , -(sin(self.latitude)*sin(self.longitude))/(R + self.altitude), cos(self.latitude)/(R + self.altitude) ], 
-			[ -sin(self.longitude)/(cos(self.latitude)*(R + self.altitude)) , cos(self.longitude)/(cos(self.latitude)*(R + self.altitude)), 0], 
-			[ (cos(self.latitude)*cos(self.longitude))/R , (cos(self.latitude)*sin(self.longitude))/R ,  sin(self.latitude)/R] ] )
-
-	"""def set_initial_state(self, **kwargs):
 		for key, value in kwargs.items():
-			self.gps_zero[key] = value
+			if key in self.measurementList:
+				setattr(self, key, value)
 
-		for arg in args:
-			if type(arg) == type(dict()):
-				for key, value in args.items():
-					self.gps_zero[key] = value
-	"""
-
-class GPS(Sensor, object):
-	"""docstring for GPS 
-	x is easting
-	y is northing
-	z is altitude """
-	measurementList = ['latitude', 'longitude', 'altitude']
-	stateList = ['position.x', 'position.y', 'position.z']
-	def __init__(self, **kwargs):
-		super(GPS, self).__init__(stateList = GPS.stateList, measurementList = GPS.measurementList, **kwargs)
-		
-		self.Covariance= 0.4 * matlib.eye( len(self.measurementList) )
-
+		# transform latitude longitude to easting, northing
 		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
 
-		self.gps_zero = dict( x = easting, y = northing, z = self.altitude)
-
-		self.calibrated = False 
+		# set attributes and Z vector
+		super(GPS, self).measure(x = easting - self.gps_zero['x'], 
+			y = northing - self.gps_zero['y'], 
+			z = self.altitude - self.gps_zero['z'] )
 
 	@property 
 	def latitude(self):
@@ -344,66 +331,15 @@ class GPS(Sensor, object):
 	def z(self):
 		del self.properties['z']
 
-
-	def set_zero(self, *args, **kwargs):
-		if (len(args) is 0) and (len(kwargs) is 0):
-			i = 0;
-			for key in self.measurementList:
-				self.gps_zero[ key ] = self.Z.item(i)
-				i += 1
-		else:
-			if ( len(args) is 1 ) and ( type(args[0]) == type(dict()) ) :
-				set_zero( **args[0] )
-			elif len(args) == 3:
-				i = 0
-				for key in self.measurementList:
-					self.gps_zero[ key ] = args[i] 
-					i += 1
-			else:
-				for key, value in kwargs.items():
-					self.gps_zero[ key ] = value
-
-	def measure(self, *args, **kwargs):
-		# get values
-		if len(args) == 2: # only latitude and longitude
-			self.altitude = utm.conversion.R 
-			self.latitude = args[0]
-			self.longitude = args[1]
-		elif len(args) == 3: # latitude, longitude and altitude, ordered
-			i = 0
-			for attribute in self.measurementList:
-				setattr(self, attribute, args[i])
-				i += 1
-
-		elif len(args) == 1:
-			arg = args[0]
-			if type(arg) == dict():
-				self.measure(**args[0])
-			else: # latitude, longitude and altitude, ordered inside a list or tuple
-				i = 0 
-				for attribute in self.measurementList:
-					setattr(self, attribute, arg[i])
-					i += 1
-
-		for key, value in kwargs.items():
-			if key in self.measurementList:
-				setattr(self, key, value)
-
-		# transform latitude longitude to easting, northing
-		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
-
-		# set attributes and Z vector
-		super(GPS, self).measure(x = easting - self.gps_zero['x'], 
-			y = northing - self.gps_zero['y'], 
-			z = self.altitude - self.gps_zero['z'] )
-
 class Camera(Sensor, object):
 	"""docstring for Camera"""
 	def __init__(self, **kwargs):
 		super(Camera, self).__init__()
 
 class Gyroscope(Sensor, object):
-	"""docstring for Gyroscope"""
+	"""docstring for Gyroscope
+	Reads roll, pitch and yaw velocities as input as assing them to outputs. 
+	"""
 	['roll', 'pitch', 'yaw']
 	['velocity.roll', 'velocity.pitch', 'velocity.yaw']
 	def __init__(self, roll = 0, pitch = 0, yaw = 0, **kwargs):
@@ -441,7 +377,9 @@ class Gyroscope(Sensor, object):
 		del self.properties['roll']
 
 class Accelerometer(Sensor, object):
-	"""docstring for Accelerometer"""
+	"""docstring for Accelerometer
+	Reads ax, ay and az and calculates roll and pitch of the vehicle. 
+	"""
 	measurementList = ['ax', 'ay', 'az']
 	stateList = ['position.roll', 'position.pitch']
 	def __init__(self, **kwargs):
@@ -524,7 +462,9 @@ class Accelerometer(Sensor, object):
 		del self.properties['az']
 
 class Magnetomer(Sensor, object):
-	"""docstring for Magnetomer"""
+	"""docstring for Magnetomer
+	Reads Hx, Hy and Hz and calculates global yaw of the vehicle. 
+	"""
 	measurementList = ['Hx', 'Hy', 'Hz']
 	stateList = ['position.yaw']
 	def __init__(self, **kwargs):

@@ -25,13 +25,27 @@ Step = dict(
 
 
 class ROS_Handler(object):
-	"""docstring for ROS_Handler"""
+	"""docstring for ROS_Handler:
+	Subscribed to:
+		ardrone/navdata -> reads state of the ardrone
+
+	Publishes to:
+		ardrone/land
+		ardrone/takeoff
+		ardrone/reset
+		controllerstate -> communicates to the controller its state
+
+		ardrone/trajectory -> Prints in an Odometry msg the desired trajectory 
+			It is called by a Timer 
+			trajectory data is taken from a self.quadrotor object instance 
+
+	"""
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 		
-		self.land = rospy.Publisher('/ardrone/land', Empty)
+		self.land = rospy.Publisher('/ardrone/land', Empty, latch = True)
 		self.takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True)
-		self.reset = rospy.Publisher('/ardrone/reset', Empty)
+		self.reset = rospy.Publisher('/ardrone/reset', Empty, latch = True)
 
 		self.quadrotor = Quadrotor()
 
@@ -112,18 +126,20 @@ class ROS_Handler(object):
 		self.change_set_point('z', scale)
 
 	def Yaw(self, scale):
-		self.change_set_point('yaw', scale)
+		self.change_set_point('yaw', scale) 
+		# Order is important: first change set point in yaw, then update quaternions.
+
 		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
+		
 		self.quadrotor.orientation.x = quaternion[0]
 		self.quadrotor.orientation.y = quaternion[1]
 		self.quadrotor.orientation.z = quaternion[2]
 		self.quadrotor.orientation.w = quaternion[3]
 
 	def change_set_point(self, direction, scale):
+		# it changes an attribute from the self.quadrotor.position by a fraction of a Step.
 		setattr(self.quadrotor.position, direction, 
 			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
-
-		# print scale, direction
 
 def main():
 	rospy.init_node('StateHandler', anonymous = True)

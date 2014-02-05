@@ -5,7 +5,11 @@ from collections import deque
 import math
 
 class DigitalFilter(BasicObject, object):
-	"""docstring for Controller"""
+	"""docstring for DigitalFilter
+		A digital filtered implemented as a Direct Form II parallel algorithm. 
+		H(z) = Output / Input = b[i].z^-i / a[i].z^-i 
+		ouptut [n] = - a[k] output[n-k] + b[k].input[n-k] 
+	"""
 	def __init__(self, **kwargs):
 		super(DigitalFilter, self).__init__( **kwargs )
 
@@ -17,7 +21,6 @@ class DigitalFilter(BasicObject, object):
 		self.output = deque( maxlen = kwargs.get('output_size', len(self.a)) )
 
 		self.Ts = kwargs.get( 'Ts', kwargs.get('Command_Time', 0) )
-
 
 	def set_input(self, *args, **kwargs):
 		if len(args) == 1:

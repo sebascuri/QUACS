@@ -9,7 +9,10 @@ import numpy.matlib as matlib
 from BasicObject import BasicObject, SixDofObject, Quaternion
 
 class BasicProcess(BasicObject, object):
-	"""docstring for Odometry"""
+	"""docstring for BasicProcess
+	Each process has an predict mehtod that predict the variables in the state list 
+	In each update variable X and Jacobian is also updated
+	"""
 	def __init__(self, **kwargs):
 		# super(BasicProcess, self).__init__( **kwargs )
 		self.properties = dict( stateList = kwargs.get('stateList', list()))  #List from property to index in X state
@@ -41,7 +44,7 @@ class BasicProcess(BasicObject, object):
 	def __len__(self):
 		return np.size(self.stateList) 
 
-	def update(self, **kwargs):
+	def predict(self, **kwargs):
 		for key, value in kwargs.items():
 			setattr(self, key, value)
 
@@ -157,13 +160,16 @@ class BasicProcess(BasicObject, object):
 
 class XY_Odometry1(BasicProcess, object):
 	"""docstring for Odometry
-	First Order Odometry for AR.DRONE"""
-	def __init__(self, *args, **kwargs):
-		stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
-		super(XY_Odometry1, self).__init__(stateList = stateList, *args, **kwargs )
+	First Order Odometry for AR.DRONE
+	x(k+1) = x(k) + vx(k).cos(yaw(k)).Ts - vy(k).sin(yaw(k)).Ts
+	y(k+1) = y(k) + vx(k).sin(yaw(k)).Ts + vy(k).cos(yaw(k)).Ts
+	"""
+	stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
+	def __init__(self, *args, **kwargs):	
+		super(XY_Odometry1, self).__init__(stateList = XY_Odometry1.stateList, *args, **kwargs )
 
-	def update(self, **kwargs):
-		super(XY_Odometry1, self).update( **kwargs )
+	def predict(self, **kwargs):
+		super(XY_Odometry1, self).predict( **kwargs )
 
 		self.position.x += self.Ts * ( self.velocity.x * cos(self.position.yaw) - self.velocity.y * sin(self.position.yaw) )
 		self.position.y += self.Ts * ( self.velocity.x * sin(self.position.yaw) + self.velocity.y * cos(self.position.yaw) )
@@ -178,13 +184,16 @@ class XY_Odometry1(BasicProcess, object):
 		return dict(position = self.position)
 
 class Z_Odometry1(BasicProcess, object):
-	"""docstring for Z_Odometry1"""
+	"""docstring for Z_Odometry1
+	z(k+1) = z(k) + vz(k).Ts 
+	"""
+	stateList = ['position.z']
 	def __init__(self, *args, **kwargs):
 		stateList = ['position.z']
-		super(Z_Odometry1, self).__init__(stateList = stateList, *args, **kwargs )
+		super(Z_Odometry1, self).__init__(stateList = Z_Odometry1.stateList, *args, **kwargs )
 
-	def update(self, **kwargs):
-		super(Z_Odometry1, self).update( **kwargs )
+	def predict(self, **kwargs):
+		super(Z_Odometry1, self).predict( **kwargs )
 
 
 		self.position.z += self.Ts * self.velocity.z
@@ -196,13 +205,15 @@ class Z_Odometry1(BasicProcess, object):
 		
 class XY_Odometry2(BasicProcess, object):
 	"""docstring for Odometry2
-	Second Order Odometry for AR.DRONE"""
+	Second Order Odometry for AR.DRONE
+	"""
+	stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
 	def __init__(self, *args, **kwargs):
-		stateList = [ 'position.x', 'position.y' , 'position.yaw' ]
-		super(XY_Odometry2, self).__init__(stateList = stateList, *args, **kwargs )
+		
+		super(XY_Odometry2, self).__init__(stateList = XY_Odometry2.stateList, *args, **kwargs )
 
-	def update(self, **kwargs):
-		super(XY_Odometry2, self).update( **kwargs )
+	def predict(self, **kwargs):
+		super(XY_Odometry2, self).predict( **kwargs )
 
 		self.position.x += (self.Ts  * (self.velocity.x * cos(self.position.yaw) - self.velocity.y * sin(self.position.yaw)) 
 			+ 0.5 * self.Ts ** 2 * (self.acceleration.x * cos(self.position.yaw) - self.velocity.x * self.velocity.yaw * sin(self.position.yaw) 
@@ -228,12 +239,12 @@ class XY_Odometry2(BasicProcess, object):
 
 class Z_Odometry2(BasicProcess, object):
 	"""docstring for Z_Odometry1"""	
+	stateList = ['position.z']
 	def __init__(self, *args, **kwargs):
-		stateList = ['position.z']
-		super(Z_Odometry2, self).__init__(stateList = stateList, *args, **kwargs )
+		super(Z_Odometry2, self).__init__(stateList = Z_Odometry2.stateList, *args, **kwargs )
 
-	def update(self, **kwargs):
-		super(Z_Odometry2, self).update( **kwargs )
+	def predict(self, **kwargs):
+		super(Z_Odometry2, self).predict( **kwargs )
 
 		self.position.z += self.Ts * self.velocity.z + 0.5 * self.Ts ** 2 * self.acceleration.z 
 		
@@ -244,13 +255,15 @@ class Z_Odometry2(BasicProcess, object):
 		return dict(position = self.position)
 
 class SO3(BasicProcess, object):
-	"""docstring for SO3"""
-	def __init__(self, *args, **kwargs):
-		stateList = ['orientation.w', 'orientation.x', 'orientation.y', 'orientation.z']
-		super(SO3, self).__init__(stateList = stateList, *args, **kwargs)
+	"""docstring for SO3
+	SO3 predicition in quaternion form. 
+	"""
+	stateList = ['orientation.w', 'orientation.x', 'orientation.y', 'orientation.z']
+	def __init__(self, *args, **kwargs):	
+		super(SO3, self).__init__(stateList = SO3.stateList, *args, **kwargs)
 		
-	def update(self, **kwargs):
-		super(SO3, self).update( **kwargs )
+	def predict(self, **kwargs):
+		super(SO3, self).predict( **kwargs )
 		
 		self.orientation.w += 0.5 * self.Ts * ( - self.velocity.roll * self.orientation.x - 
 			self.velocity.pitch * self.orientation.y - self.velocity.yaw * self.orientation.z ) 
@@ -290,16 +303,16 @@ def process_test( process_object ):
 	print repr(process)
 
 	print 'X', process.X 
-	process.update(position = SixDofObject(x = 2, y = -1, z = 3, yaw = pi/4), velocity = SixDofObject(x = 3, y = 2, z = -2, pitch = pi/2, roll = -pi/6 ), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 5))
+	process.predict(position = SixDofObject(x = 2, y = -1, z = 3, yaw = pi/4), velocity = SixDofObject(x = 3, y = 2, z = -2, pitch = pi/2, roll = -pi/6 ), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 5))
 	print 'X', process.X
 	print 'P', process.Jacobian
 	print 'R', process.Covariance
-	process.update(position = SixDofObject(x = 5, y = -1, z = 2), velocity = SixDofObject(x = 3, y = 2, z = -2, yaw = pi/4), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 0))
+	process.predict(position = SixDofObject(x = 5, y = -1, z = 2), velocity = SixDofObject(x = 3, y = 2, z = -2, yaw = pi/4), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 0))
 
 	print 'X', process.X
-	process.update()
+	process.predict()
 	print 'X', process.X 
-	process.update()
+	process.predict()
 	print 'X', process.X 
 
 	print 'P', process.Jacobian
