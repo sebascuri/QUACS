@@ -88,13 +88,12 @@ To add your own module any module of the *.launch file can be commented
 
 ## To do
 
-* [ ] Implement a handler for periodicity in yaw error <p align="center">
-![equation] (http://latex.codecogs.com/gif.latex?%24%20%5Cleft%28%20e_%7B%5Cpsi%7D%20%3D%20%5Cmin_K%20%7C%5Cpsi%20-%20%5Cpsi_%7Bgoal%7D%20&plus;%202%20K%20%5Cpi%20%7C%20%5Cright%20%29%20%24)
-</p>
-
-
-- [ ] Modify controller so as to actuate only when Drone is Flying 
-- [x] Implement a PS3 Joystick Module
++ [ ] Implement a handler for periodicity in yaw error  @done (2014-02-05 20:23)
+<p align="center">
+![equation](http://latex.codecogs.com/gif.latex?%24%20%5Cleft%28%20e_%7B%5Cpsi%7D%20%3D%20%5Cmin_K%20%7C%5Cpsi%20-%20%5Cpsi_%7Bgoal%7D%20&plus;%202%20K%20%5Cpi%20%7C%20%5Cright%20%29%20%24)
+</p> 
++ [ ] Modify controller so as to actuate only when Drone is Flying  
++ [x] Implement a PS3 Joystick Module  @done (2014-02-05 14:53)
 - [ ] Add GPS-Sensor Measurements and Kalman Filter for Estimation
 - [ ] Add a new controller
 - [ ] Make a GUI that shows Drone Status
