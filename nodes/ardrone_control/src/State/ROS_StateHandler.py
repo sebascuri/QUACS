@@ -128,6 +128,10 @@ class ROS_Handler(object):
 	def Yaw(self, scale):
 		self.change_set_point('yaw', scale) 
 		# Order is important: first change set point in yaw, then update quaternions.
+		if self.quadrotor.position.yaw >=  pi :
+			self.quadrotor.position.yaw -= 2 * pi;
+		if self.quadrotor.position.yaw < -pi:
+			self.quadrotor.position.yaw += 2 * pi;
 
 		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
 		

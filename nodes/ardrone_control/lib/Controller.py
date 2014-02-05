@@ -1,6 +1,8 @@
 from BasicObject import BasicObject
 from collections import deque
 
+from math import pi
+
 class BasicController(BasicObject, object):
 	"""docstring for Controller
 
@@ -24,6 +26,8 @@ class BasicController(BasicObject, object):
 			velocity =  kwargs.get('derivative_set_point', kwargs.get('velocity_set_point', deque([0],  maxlen = kwargs.get('derivative_set_point_size', 1) ) ) ) )
 
 		self.Ts = kwargs.get( 'Ts', kwargs.get('Command_Time', 0) )
+
+		self.periodic = kwargs.get('periodic', False)
 	
 	def change_set_point(self, *args, **kwargs):
 
@@ -54,6 +58,13 @@ class BasicController(BasicObject, object):
 		for key in self.input.keys( ):
 			self.error[key].append( self.set_point[key][-1] - self.input[key][-1] )
 
+		if self.periodic:
+			min_error = self.error['position'][-1]
+			while abs((self.error['position'][-1] - 2 * pi)) < abs(min_error):
+				self.error['position'][-1] -= 2 * pi
+			while abs((self.error['position'][-1] + 2 * pi)) < abs(min_error):
+				self.error['position'][-1] += 2 * pi
+			
 	def get_output(self):
 
 		return self.output[-1]
@@ -121,6 +132,16 @@ class BasicController(BasicObject, object):
 	@Ts.deleter
 	def Ts(self):
 		del self.properties['Ts']
+
+	@property
+	def periodic(self):
+		return self.properties.get('periodic', 0.0)
+	@periodic.setter
+	def periodic(self, periodic):
+		self.properties['periodic'] = periodic
+	@periodic.deleter
+	def periodic(self):
+		del self.properties['periodic']
 
 
 class PID_Controller(BasicController, object):

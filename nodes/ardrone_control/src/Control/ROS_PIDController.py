@@ -41,7 +41,7 @@ class DroneController(object):
 			z = Controller.PID_Controller( Ts = Command_Time, Kp = Gains['Z']['P'], Ki = Gains['Z']['I'], Kd = Gains['Z']['D'] ) )
 
 		self.orientation_control = dict( z = Controller.PID_Controller( Ts = Command_Time, 
-			Kp = Gains['Yaw']['P'], Ki = Gains['Yaw']['I'], Kd = Gains['Yaw']['D'] ) )
+			Kp = Gains['Yaw']['P'], Ki = Gains['Yaw']['I'], Kd = Gains['Yaw']['D'] , periodic = True) )
 		self.yaw = 0
 	
 
