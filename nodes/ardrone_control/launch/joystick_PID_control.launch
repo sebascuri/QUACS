@@ -4,7 +4,7 @@
 	<include file="$(find cvg_sim_test)/launch/3boxes_room.launch" if="$(arg simulator)"/>
 	
 	<!-- include record files -->
-	<arg name="record" default="true" />
+	<arg name="record" default="false" />
 	<include file="$(find ardrone_control)/launch/record.launch" if="$(arg record)"/>
 
 	<!-- include realtime plot -->
