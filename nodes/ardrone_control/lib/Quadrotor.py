@@ -227,6 +227,9 @@ def main():
 	parrot.predict()
 	print parrot.position
 
+	parrot.state = 'Hovvering'
+	print parrot.state, type(parrot.state)
+
 	#print parrot.velocity.yaw
 	
 

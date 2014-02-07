@@ -266,6 +266,14 @@ class State(BasicObject, object):
 			return str(self.state) is self.MAP[data]
 
 	def set_state(self, state):
+		if type(state) == int and len(self.MAP) > state:
+			self.state = self.MAP[state]
+		elif state in self.MAP:
+			self.state = state
+		else:
+			self.state = self.MAP[0] 
+			# print 'State not recognized, setting it to Unkown'
+		"""
 		if (state in self.MAP.values()) or (state in self.MAP.keys()):
 			if type(state) == int:
 				self.state = self.MAP[state]
@@ -274,6 +282,7 @@ class State(BasicObject, object):
 		else:
 			self.state = self.MAP[0]
 			print 'State not recognized, setting it to Unkown'
+		"""
 
 	# Object Properties
 	@property 
@@ -287,6 +296,8 @@ class State(BasicObject, object):
 		del self.properties['state']
 
 class ArDroneState(State, object):
+	
+	"""
 	MAP = {
 	0 : 'Unknown', 
 	1 : 'Inited', 
@@ -298,8 +309,21 @@ class ArDroneState(State, object):
 	7 : 'Flying', 
 	8 : 'Landed', 
 	9 : 'Looping'}
+	"""
+	MAP = [
+	'Unknown', 
+	'Inited', 
+	'Landed', 
+	'Flying', 
+	'Hovering', 
+	'Test', 
+	'Taking off', 
+	'Flying', 
+	'Landed', 
+	'Looping']
 
 class ControllerState(State, object):
+	"""
 	MAP = {
 	-1: 'Off',
 	0 : 'Unknown', 
@@ -307,7 +331,14 @@ class ControllerState(State, object):
 	2 : 'Avoid-Obstacles', 
 	3 : 'Sliding-Mode'
 	}
-
+	"""
+	MAP = [
+	'Unknown', 
+	'Go-to-Goal', 
+	'Avoid-Obstacles', 
+	'Sliding-Mode',
+	'Off'
+	]
 
 class Motor(BasicObject, object):
 	"""docstring for Motors

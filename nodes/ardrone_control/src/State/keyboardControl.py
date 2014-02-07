@@ -36,7 +36,9 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 		Yaw 				= [ QtCore.Qt.Key_A, QtCore.Qt.Key_D ],
 		TakeOff          	= [ QtCore.Qt.Key_Return ],
 		Land             	= [ QtCore.Qt.Key_Backspace ],
-		Reset        		= [ QtCore.Qt.Key_Space ]
+		Reset        		= [ QtCore.Qt.Key_Space ],
+		ControlOff 			= [ QtCore.Qt.Key_O ],
+		GoToGoal 			= [ QtCore.Qt.Key_G ]
 		)
 
 	def __init__(self, **kwargs):
@@ -68,9 +70,6 @@ def main():
 	rospy.spin()
 
 	# sys.exit(status)
-		
-
-
-    
+		   
 
 if __name__ == "__main__": main()

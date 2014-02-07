@@ -10,8 +10,10 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
+from diagnostic_msgs.msg import KeyValue # added for State Handling
 
 from Quadrotor import Quadrotor
+from BasicObject import ControllerState
 
 import tf
 from math import pi
@@ -23,7 +25,6 @@ Step = dict(
 	z = 0.1, 
 	yaw = pi/20)
 
-
 class ROS_Handler(object):
 	"""docstring for ROS_Handler:
 	Subscribed to:
@@ -33,7 +34,7 @@ class ROS_Handler(object):
 		ardrone/land
 		ardrone/takeoff
 		ardrone/reset
-		controllerstate -> communicates to the controller its state
+		ardrone/controller/state -> communicates to the controller its state
 
 		ardrone/trajectory -> Prints in an Odometry msg the desired trajectory 
 			It is called by a Timer 
@@ -47,9 +48,9 @@ class ROS_Handler(object):
 		self.takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True)
 		self.reset = rospy.Publisher('/ardrone/reset', Empty, latch = True)
 
-		self.quadrotor = Quadrotor()
+		self.controller_state = rospy.Publisher('/ardrone/controller/state', KeyValue, latch = True)
 
-		# self.controller = ControllerState()
+		self.quadrotor = Quadrotor()
 
 		self.name = kwargs.get('name', "/goal")
 
@@ -102,6 +103,7 @@ class ROS_Handler(object):
 	def TakeOff(self, *args):
 		# Send a takeoff message to the ardrone driver
 		# Note we only send a takeoff message if the drone is landed - an unexpected takeoff is not good!
+		print self.quadrotor.state
 		if(self.quadrotor.state == 'Landed'):
 			self.takeoff.publish()
 			print "Taking Off!"
@@ -109,13 +111,15 @@ class ROS_Handler(object):
 			print "Drone is not landed"
 
 	def Reset(self, *args):
+		self.ControlOff()
 		self.reset.publish()
 		print "Reset"
 
 	def Land(self, *args):
+		self.ControlOff()
 		self.land.publish()
 		print "Landing"
-
+	
 	def X(self, scale):
 		self.change_set_point('x', scale)
 
@@ -140,11 +144,35 @@ class ROS_Handler(object):
 		self.quadrotor.orientation.z = quaternion[2]
 		self.quadrotor.orientation.w = quaternion[3]
 
+	def ControlOff(self, *args):
+		self.change_controller_state('Off')
+
+	def GoToGoal(self, *args):
+		self.change_controller_state('Go-to-Goal')
+
+	def AvoidObstacles(self, *args):
+		self.change_controller_state('Avoid-Obstacles')
+
+	def SlidingMode(self, *args):
+		self.change_controller_state('Sliding-Mode')
+
 	def change_set_point(self, direction, scale):
 		# it changes an attribute from the self.quadrotor.position by a fraction of a Step.
 		setattr(self.quadrotor.position, direction, 
 			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
 
+	def change_controller_state(self, state_new_name):
+		new_state = KeyValue()
+
+		if state_new_name in ControllerState.MAP:
+			new_state.key = state_new_name	
+		else: 
+			new_state.key = 'Unknown'
+
+		new_state.value = str( ControllerState.MAP.index( new_state.key ) )
+
+		self.controller_state.publish(new_state)
+	
 def main():
 	rospy.init_node('StateHandler', anonymous = True)
 	ros_handler = ROS_Handler(Command_Time = 1)

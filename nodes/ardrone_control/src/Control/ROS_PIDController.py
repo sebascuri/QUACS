@@ -13,6 +13,7 @@ from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from diagnostic_msgs.msg import KeyValue # added for State Handling
 
 import Controller 
+from BasicObject import ControllerState
 
 from math import pi, cos, sin 
 import tf 
@@ -28,7 +29,7 @@ class DroneController(object):
 	There is a yaw property that maps from local to world coordinates. A tf is planned. 
 
 	"""
-	def __init__(self):
+	def __init__(self, **kwargs):
 		super(DroneController, self).__init__()
 		Gains = rospy.get_param('Gains', dict( X = dict(P = 1.0, I = 0.0, D = 0.0), 
 			Y = dict(P = 1.0, I = 0.0, D = 0.0),
@@ -42,8 +43,38 @@ class DroneController(object):
 
 		self.orientation_control = dict( z = Controller.PID_Controller( Ts = Command_Time, 
 			Kp = Gains['Yaw']['P'], Ki = Gains['Yaw']['I'], Kd = Gains['Yaw']['D'] , periodic = True) )
-		self.yaw = 0
+		
+		self.properties = dict()
+		self.yaw = kwargs.get('yaw', 0)
+
+		self.state = kwargs.get('state', ControllerState())
+
+	@property 
+	def yaw(self):
+		return self.properties.get('yaw', 0)
+	@yaw.setter 
+	def yaw(self, yaw):
+		self.properties['yaw'] = yaw
+	@yaw.deleter
+	def yaw(self):
+		del self.properties['yaw']
 	
+	# Object Properties
+	@property 
+	def state(self):
+		try:
+			return getattr(self.properties.get('state'), 'state')
+		except AttributeError:
+			return None
+	@state.setter
+	def state(self, state):
+		if self.state is not None:
+			self.properties['state'].set_state(state)
+		else:
+			self.properties['state'] = state
+	@state.deleter
+	def state(self):
+		del self.properties['state']
 
 class ROS_Handler(DroneController, object):
 	"""docstring for ROS_Handler
@@ -69,7 +100,7 @@ class ROS_Handler(DroneController, object):
 		super(ROS_Handler, self).__init__()
 
 		rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False)
-		
+	
 		rospy.Subscriber('/ardrone/controller/state', KeyValue, callback = self.RecieveState)
 		rospy.Subscriber('/ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' )
 		rospy.Subscriber('/ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
@@ -90,23 +121,24 @@ class ROS_Handler(DroneController, object):
 			self.yaw = angles[ self.Angles_MAP['z'] ]
 
 	def Actuate(self, time):
-		twist = Twist()
-		for key in self.position_control.keys():
-			setattr(twist.linear, key, self.position_control[key].get_output( ))
+		if self.state == 'Go-to-Goal':
+			twist = Twist()
+			for key in self.position_control.keys():
+				setattr(twist.linear, key, self.position_control[key].get_output( ))
 
 
-		for key in self.orientation_control.keys( ):
-			setattr(twist.angular, key, self.orientation_control[key].get_output( ))
+			for key in self.orientation_control.keys( ):
+				setattr(twist.angular, key, self.orientation_control[key].get_output( ))
 
 
-		aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
-		aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
-		twist.linear.x = aux_x
-		twist.linear.y = aux_y
-		self.command_velocity.publish(twist)
+			aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
+			aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
+			twist.linear.x = aux_x
+			twist.linear.y = aux_y
+			self.command_velocity.publish(twist)
 
 	def RecieveState(self, data):
-		pass
+		self.state = data.key 
 
 def main():    
 	rospy.init_node('Controller', anonymous = True)

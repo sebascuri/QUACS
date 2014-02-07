@@ -31,9 +31,9 @@ class JoystickController(ROS_Handler, object):
 		TakeOff         = {'buttons' : 14}, #Cross Button
 		Land            = {'buttons' : 15}, #Square Button
 		Reset       	= {'buttons' : 11}, #R1 Button
+		ControlOff 		= {'buttons' : 12}, #Triange Button
+		GoToGoal 		= {'buttons' : 3 } #Start Button
 		) 
-	# 
-	#
 
 	def __init__(self, **kwargs):
 		super(JoystickController, self).__init__(**kwargs)
