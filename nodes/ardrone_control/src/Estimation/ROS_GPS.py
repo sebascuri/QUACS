@@ -45,7 +45,7 @@ class ROS_SensorFusion(SensorFusion, object):
         # rospy.Subscriber('ardrone/imu', Imu, callback = self.ReceiveImu)
         rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
         self.gps_calibrated = False
-        # rospy.Subscriber('ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight)
+        # rospy.Subscriber('/sonar_height', Imu, callback = self.ReceiveSonarHeight)
 
         self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
 

@@ -30,11 +30,11 @@ class ROS_SensorFusion(SensorFusion, object):
         super(ROS_SensorFusion, self).__init__(**kwargs)
         
 
-        # rospy.Subscriber('fix', GPS, callback = self.Listen, callback_args = self.ReceiveGPS)
+        # rospy.Subscriber('/fix', GPS, callback = self.Listen, callback_args = self.ReceiveGPS)
         rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata) 
-        # rospy.Subscriber('ardrone/imu', Imu, callback = self.ReceiveImu)
+        # rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu)
         rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
-        # rospy.Subscriber('ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight)
+        # rospy.Subscriber('/sonar_height', Imu, callback = self.ReceiveSonarHeight)
 
         self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
 

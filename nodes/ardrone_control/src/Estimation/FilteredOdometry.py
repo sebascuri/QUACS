@@ -43,7 +43,7 @@ class SensorFusion(Quadrotor, object):
         rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
         rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
         rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu )
-        rospy.Subscriber('/ardrone/sonar_height', Imu, callback = self.ReceiveSonarHeight )
+        rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
 
         self.name = kwargs.get('name', "/local")
 

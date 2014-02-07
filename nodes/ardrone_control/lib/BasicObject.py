@@ -1,5 +1,5 @@
-#!/users/sebastiancuri/anaconda/bin/python
 #!/usr/bin/env python
+#!/users/sebastiancuri/anaconda/bin/python
 
 from math import pi, sqrt
 try:
@@ -296,20 +296,6 @@ class State(BasicObject, object):
 		del self.properties['state']
 
 class ArDroneState(State, object):
-	
-	"""
-	MAP = {
-	0 : 'Unknown', 
-	1 : 'Inited', 
-	2 : 'Landed', 
-	3 : 'Flying', 
-	4 : 'Hovering', 
-	5 : 'Test', 
-	6 : 'Taking off', 
-	7 : 'Flying', 
-	8 : 'Landed', 
-	9 : 'Looping'}
-	"""
 	MAP = [
 	'Unknown', 
 	'Inited', 
@@ -323,20 +309,9 @@ class ArDroneState(State, object):
 	'Looping']
 
 class ControllerState(State, object):
-	"""
-	MAP = {
-	-1: 'Off',
-	0 : 'Unknown', 
-	1 : 'Go-to-Goal', 
-	2 : 'Avoid-Obstacles', 
-	3 : 'Sliding-Mode'
-	}
-	"""
 	MAP = [
 	'Unknown', 
-	'Go-to-Goal', 
-	'Avoid-Obstacles', 
-	'Sliding-Mode',
+	'On', 
 	'Off'
 	]
 

@@ -12,13 +12,17 @@ from std_msgs.msg import Empty
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from diagnostic_msgs.msg import KeyValue # added for State Handling
 
+from ardrone_control.srv import Signal
+
+
 from Quadrotor import Quadrotor
 from BasicObject import ControllerState
+from Signals import SignalResponse
 
 import tf
 from math import pi
 
-
+Command_Time = 0.01;
 Step = dict( 
 	x = 0.1, 
 	y = 0.1, 
@@ -43,25 +47,79 @@ class ROS_Handler(object):
 	"""
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
-		
+
+		self.quadrotor = Quadrotor()
+
+		#Publishers
 		self.land = rospy.Publisher('/ardrone/land', Empty, latch = True)
 		self.takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True)
 		self.reset = rospy.Publisher('/ardrone/reset', Empty, latch = True)
 
 		self.controller_state = rospy.Publisher('/ardrone/controller/state', KeyValue, latch = True)
-
-		self.quadrotor = Quadrotor()
-
-		self.name = kwargs.get('name', "/goal")
-
-		rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata)
+		self.cmd_vel = rospy.Publisher('/cmd_vel', Twist )
 		self.trajectory = rospy.Publisher('/ardrone/trajectory', Odometry)
+		
+		#Subscribers
+		rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata)
+		rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
+		
+		#Services
+		self.signal_service = rospy.Service('/ardrone_control/Signal', Signal, self.Signal)
+		
+		#Tf
+		self.name = kwargs.get('name', "/goal")
 		self.goal_tf = tf.TransformBroadcaster()
 
-		rospy.Timer(rospy.Duration( kwargs.get('Command_Time', 1) ), self.Talk, oneshot=False)
+		#Timers
+		self.Ts = kwargs.get('Command_Time', 1)
+		self.trajectory_timer = rospy.Timer(rospy.Duration( self.Ts ), self.Talk, oneshot=False)
+		self.signal_timer = None
+		self.signal = []
 
 	def RecieveNavdata( self, data ):
 		self.quadrotor.set_state(data.state)
+
+	def ReceiveSonarHeight(self, data):
+		"""
+		if data.max_range > data.range:
+			self.landFlag = False
+		if data.range < safe_min:
+			pass
+		"""
+		pass
+
+	def Signal(self, data):
+		if len(self.signal):
+			print "It's still sending data"
+		else:
+			if self.quadrotor.state == 'Flying' or self.quadrotor.state == 'Hovering':
+				self.ControlOff()
+				self.signal = SignalResponse( tf = data.time, dt = data.dt, f = data.f, signal = data.signal, direction = data.direction ) 
+				self.signal_timer = rospy.Timer( rospy.Duration(self.signal.dt), self.CmdSignal, oneshot = False )
+		return []
+
+	def CmdSignal(self, time):
+		msg = Twist()
+		if len(self.signal):
+			if self.signal.direction == 'yaw':
+				msg.angular.z = self.signal.command() #set angular velocity
+			else:
+				setattr( msg.linear, self.signal.direction, self.signal.command() ) #set linear velocity
+		else:
+			print "Done sending Signal"
+			self.SignalOff()
+
+		self.cmd_vel.publish( msg ) #always publish so last command makes it stop
+
+	def SignalOff(self):
+		try:
+			self.signal_timer.shutdown( )
+			self.signal = [ ]
+		except AttributeError:
+			pass
+
+		msg = Twist()
+		self.cmd_vel.publish( msg ) 
 
 	def Talk( self, time ):
 		""" Publishes the Goal Point for the Controller """
@@ -112,11 +170,14 @@ class ROS_Handler(object):
 
 	def Reset(self, *args):
 		self.ControlOff()
+		self.SignalOff()
+
 		self.reset.publish()
 		print "Reset"
 
 	def Land(self, *args):
 		self.ControlOff()
+		self.SignalOff()
 		self.land.publish()
 		print "Landing"
 	
@@ -147,14 +208,31 @@ class ROS_Handler(object):
 	def ControlOff(self, *args):
 		self.change_controller_state('Off')
 
-	def GoToGoal(self, *args):
-		self.change_controller_state('Go-to-Goal')
+	def ControlOn(self, *args):
+		if self.quadrotor.state == 'Flying' or self.quadrotor.state == 'Hovering':
+			self.change_controller_state('On')
 
-	def AvoidObstacles(self, *args):
-		self.change_controller_state('Avoid-Obstacles')
+	def default_chirp_data(self, direction):
+		data = Signal()
+		data.time = 10
+		data.dt = 0.01
+		data.f = 20
+		data.signal = 'chirp'
+		data.direction = direction
 
-	def SlidingMode(self, *args):
-		self.change_controller_state('Sliding-Mode')
+		return data
+
+	def ChirpX(self, *args):
+		self.Signal( self.default_chirp_data('x') )
+
+	def ChirpY(self, *args):
+		self.Signal( self.default_chirp_data('y') ) 
+
+	def ChirpZ(self, *args):
+		self.Signal( self.default_chirp_data('z') ) 
+
+	def ChirpYaw(self, *args):
+		self.Signal( self.default_chirp_data('yaw') ) 
 
 	def change_set_point(self, direction, scale):
 		# it changes an attribute from the self.quadrotor.position by a fraction of a Step.
@@ -172,6 +250,8 @@ class ROS_Handler(object):
 		new_state.value = str( ControllerState.MAP.index( new_state.key ) )
 
 		self.controller_state.publish(new_state)
+
+		print "Controller New State is:", new_state.key
 	
 def main():
 	rospy.init_node('StateHandler', anonymous = True)

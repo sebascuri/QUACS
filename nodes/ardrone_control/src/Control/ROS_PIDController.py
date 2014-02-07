@@ -121,7 +121,7 @@ class ROS_Handler(DroneController, object):
 			self.yaw = angles[ self.Angles_MAP['z'] ]
 
 	def Actuate(self, time):
-		if self.state == 'Go-to-Goal':
+		if self.state == 'On':
 			twist = Twist()
 			for key in self.position_control.keys():
 				setattr(twist.linear, key, self.position_control[key].get_output( ))

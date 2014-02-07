@@ -30,9 +30,13 @@ class JoystickController(ROS_Handler, object):
 		Yaw 			= {'axes' : 0}, #Left Analog Left-Right
 		TakeOff         = {'buttons' : 14}, #Cross Button
 		Land            = {'buttons' : 15}, #Square Button
-		Reset       	= {'buttons' : 11}, #R1 Button
-		ControlOff 		= {'buttons' : 12}, #Triange Button
-		GoToGoal 		= {'buttons' : 3 } #Start Button
+		Reset       	= {'buttons' : 12}, #Triange Button
+		ControlOff 		= {'buttons' : 13}, #Circle Button
+		ControlOn 		= {'buttons' : 3 }, #Start Button
+		ChirpX			= {'buttons' : 5 }, #Right arrow
+		ChirpY			= {'buttons' : 7 }, #Left arrow
+		ChirpZ			= {'buttons' : 4 }, #Top arrow
+		ChirpYaw		= {'buttons' : 6 } #Bottom arrow
 		) 
 
 	def __init__(self, **kwargs):

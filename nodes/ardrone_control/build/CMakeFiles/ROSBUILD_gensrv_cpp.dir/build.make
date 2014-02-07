@@ -42,9 +42,46 @@ CMAKE_BINARY_DIR = /home/parallels/ros_fuerte_ws/nodes/ardrone_control/build
 # Include the progress variables for this target.
 include CMakeFiles/ROSBUILD_gensrv_cpp.dir/progress.make
 
-CMakeFiles/ROSBUILD_gensrv_cpp:
+CMakeFiles/ROSBUILD_gensrv_cpp: ../srv_gen/cpp/include/ardrone_control/Signal.h
+
+../srv_gen/cpp/include/ardrone_control/Signal.h: ../srv/Signal.srv
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roscpp/rosbuild/scripts/gensrv_cpp.py
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roscpp/rosbuild/scripts/genmsg_cpp.py
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roslib/bin/gendeps
+../srv_gen/cpp/include/ardrone_control/Signal.h: ../manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roslang/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roscpp/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/geometry_msgs/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/sensor_msgs/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/ros/core/rosbuild/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roslib/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/rosconsole/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/pluginlib/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/message_filters/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/image_common/image_transport/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/std_srvs/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/bullet/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/geometry/angles/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/rospy/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/rostest/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/roswtf/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/geometry/tf/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/common_rosdeps/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/image_common/camera_calibration_parsers/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/image_common/camera_info_manager/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /home/parallels/ros/stacks/ardrone_autonomy/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/std_msgs/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/share/nav_msgs/manifest.xml
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/geometry/tf/msg_gen/generated
+../srv_gen/cpp/include/ardrone_control/Signal.h: /opt/ros/fuerte/stacks/geometry/tf/srv_gen/generated
+../srv_gen/cpp/include/ardrone_control/Signal.h: /home/parallels/ros/stacks/ardrone_autonomy/msg_gen/generated
+../srv_gen/cpp/include/ardrone_control/Signal.h: /home/parallels/ros/stacks/ardrone_autonomy/srv_gen/generated
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/parallels/ros_fuerte_ws/nodes/ardrone_control/build/CMakeFiles $(CMAKE_PROGRESS_1)
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold "Generating ../srv_gen/cpp/include/ardrone_control/Signal.h"
+	/opt/ros/fuerte/share/roscpp/rosbuild/scripts/gensrv_cpp.py /home/parallels/ros_fuerte_ws/nodes/ardrone_control/srv/Signal.srv
 
 ROSBUILD_gensrv_cpp: CMakeFiles/ROSBUILD_gensrv_cpp
+ROSBUILD_gensrv_cpp: ../srv_gen/cpp/include/ardrone_control/Signal.h
 ROSBUILD_gensrv_cpp: CMakeFiles/ROSBUILD_gensrv_cpp.dir/build.make
 .PHONY : ROSBUILD_gensrv_cpp
 

@@ -1,4 +1,7 @@
 FILE(REMOVE_RECURSE
+  "../srv_gen"
+  "../src/ardrone_control/srv"
+  "../srv_gen"
   "CMakeFiles/ROSBUILD_genmsg_cpp"
 )
 

@@ -1,5 +1,9 @@
 FILE(REMOVE_RECURSE
+  "../srv_gen"
+  "../src/ardrone_control/srv"
+  "../srv_gen"
   "CMakeFiles/ROSBUILD_gensrv_cpp"
+  "../srv_gen/cpp/include/ardrone_control/Signal.h"
 )
 
 # Per-language clean rules from dependency scanning.

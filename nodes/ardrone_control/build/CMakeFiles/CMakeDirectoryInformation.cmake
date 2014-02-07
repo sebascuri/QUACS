@@ -24,6 +24,7 @@ SET(CMAKE_C_INCLUDE_PATH
   "/opt/ros/fuerte/stacks/geometry/angles/include"
   "/opt/ros/fuerte/stacks/image_common/camera_info_manager/include"
   "/opt/ros/fuerte/stacks/image_common/camera_calibration_parsers/include"
+  "../srv_gen/cpp/include"
   )
 SET(CMAKE_CXX_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})
 SET(CMAKE_Fortran_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})

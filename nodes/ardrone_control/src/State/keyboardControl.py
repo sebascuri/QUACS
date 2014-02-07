@@ -37,8 +37,12 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 		TakeOff          	= [ QtCore.Qt.Key_Return ],
 		Land             	= [ QtCore.Qt.Key_Backspace ],
 		Reset        		= [ QtCore.Qt.Key_Space ],
-		ControlOff 			= [ QtCore.Qt.Key_O ],
-		GoToGoal 			= [ QtCore.Qt.Key_G ]
+		ControlOff 			= [ QtCore.Qt.Key_F ],
+		ControlOn 			= [ QtCore.Qt.Key_G ],
+		ChirpX				= [ QtCore.Qt.Key_L ],
+		ChirpY				= [ QtCore.Qt.Key_J ],
+		ChirpZ				= [ QtCore.Qt.Key_I ],
+		ChirpYaw			= [ QtCore.Qt.Key_K ]
 		)
 
 	def __init__(self, **kwargs):
