@@ -12,6 +12,7 @@ from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 # from Odometry import Odometry as AROdometry
 from Quadrotor import Quadrotor 
 import Process
+from ROS import ROS_Object 
 
 from math import pi
 
@@ -21,7 +22,7 @@ import tf
 Command_Time = 0.005;
 g = 9.81;
 
-class SensorFusion(Quadrotor, object):
+class ROS_Odometry(Quadrotor, ROS_Object, object):
     """docstring for SensorFusion
     Subscribed to:
         ardrone/navdata -> reads ardrone raw navdata 
@@ -37,19 +38,27 @@ class SensorFusion(Quadrotor, object):
     """
     
     def __init__(self, **kwargs ):
-        super(SensorFusion, self).__init__(**kwargs)
-        rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ) 
-        rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS)
-        rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu )
-        rospy.Subscriber('/sonar_height', Imu, callback = self.ReceiveSonarHeight )
-
+        super(ROS_Odometry, self).__init__(**kwargs)
         self.name = kwargs.get('name', "/local")
 
-        self.publisher = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
+        self.subscriber = dict(
+            raw_navdata = rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ),
+            raw_gps = rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS),
+            raw_imu = rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu ),
+            raw_sonar = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
+            )
 
-        self.local_tf = tf.TransformBroadcaster()
+        self.publisher = dict(
+            state = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
+            )
+        
+        self.tf_broadcaster = dict( 
+            local_tf = tf.TransformBroadcaster()
+            )
 
-        rospy.Timer(rospy.Duration( Command_Time ), self.Command, oneshot=False)
+        self.timer = dict( 
+            publish_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Command, oneshot=False)
+            )
 
     def Command(self, time):
         self.Talk()
@@ -79,9 +88,9 @@ class SensorFusion(Quadrotor, object):
 
         #rospy.loginfo(msgs)
         
-        self.publisher.publish(msgs)
+        self.publisher['state'].publish(msgs)
 
-        self.local_tf.sendTransform( (msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
+        self.tf_broadcaster['local_tf'].sendTransform( (msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
             (msgs.pose.pose.orientation.x, msgs.pose.pose.orientation.y, msgs.pose.pose.orientation.z, msgs.pose.pose.orientation.w), 
             msgs.header.stamp, 
             msgs.child_frame_id, 

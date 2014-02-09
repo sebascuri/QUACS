@@ -13,6 +13,7 @@ from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from diagnostic_msgs.msg import KeyValue # added for State Handling
 
 import Controller 
+from ROS import ROS_Object 
 from BasicObject import ControllerState
 
 from math import pi, cos, sin 
@@ -44,9 +45,11 @@ class DroneController(object):
 		self.orientation_control = dict( z = Controller.PID_Controller( Ts = Command_Time, 
 			Kp = Gains['Yaw']['P'], Ki = Gains['Yaw']['I'], Kd = Gains['Yaw']['D'] , periodic = True) )
 		
-		self.properties = dict()
-		self.yaw = kwargs.get('yaw', 0)
+		if not hasattr(self, 'properties'):
+			self.properties = dict()
 
+
+		self.yaw = kwargs.get('yaw', 0)
 		self.state = kwargs.get('state', ControllerState())
 
 	@property 
@@ -76,7 +79,7 @@ class DroneController(object):
 	def state(self):
 		del self.properties['state']
 
-class ROS_Handler(DroneController, object):
+class ROS_Handler(DroneController, ROS_Object, object):
 	"""docstring for ROS_Handler
 
 	Subscribed to:
@@ -98,15 +101,21 @@ class ROS_Handler(DroneController, object):
 		z = 2)
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
+		
+		self.subscriber = dict(
+			controller_state = rospy.Subscriber('/ardrone/controller/state', KeyValue, callback = self.RecieveState),
+			state_estimation = rospy.Subscriber('/ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' ),
+			set_point = rospy.Subscriber('/ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
+			)
 
-		rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False)
+		self.publisher = dict( 
+			command_velocity = rospy.Publisher('/cmd_vel', Twist)
+			)
+
+		self.timer = dict( 
+			actuation_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False) 
+			)
 	
-		rospy.Subscriber('/ardrone/controller/state', KeyValue, callback = self.RecieveState)
-		rospy.Subscriber('/ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' )
-		rospy.Subscriber('/ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
-
-		self.command_velocity = rospy.Publisher('/cmd_vel', Twist)
-
 		# self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
 	def RecieveOdometry( self, data , method):
@@ -135,7 +144,7 @@ class ROS_Handler(DroneController, object):
 			aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
 			twist.linear.x = aux_x
 			twist.linear.y = aux_y
-			self.command_velocity.publish(twist)
+			self.publisher['command_velocity'].publish(twist)
 
 	def RecieveState(self, data):
 		self.state = data.key 

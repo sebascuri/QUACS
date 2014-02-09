@@ -18,6 +18,8 @@ from ardrone_control.srv import Signal
 from Quadrotor import Quadrotor
 from BasicObject import ControllerState
 from Signals import SignalResponse
+from ROS import ROS_Object 
+
 
 import tf
 from math import pi
@@ -29,7 +31,7 @@ Step = dict(
 	z = 0.1, 
 	yaw = pi/20)
 
-class ROS_Handler(object):
+class ROS_Handler(ROS_Object, object):
 	"""docstring for ROS_Handler:
 	Subscribed to:
 		ardrone/navdata -> reads state of the ardrone
@@ -49,33 +51,37 @@ class ROS_Handler(object):
 		super(ROS_Handler, self).__init__()
 
 		self.quadrotor = Quadrotor()
-
-		#Publishers
-		self.land = rospy.Publisher('/ardrone/land', Empty, latch = True)
-		self.takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True)
-		self.reset = rospy.Publisher('/ardrone/reset', Empty, latch = True)
-
-		self.controller_state = rospy.Publisher('/ardrone/controller/state', KeyValue, latch = True)
-		self.cmd_vel = rospy.Publisher('/cmd_vel', Twist )
-		self.trajectory = rospy.Publisher('/ardrone/trajectory', Odometry)
-		
-		#Subscribers
-		rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata)
-		rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
-		
-		#Services
-		self.signal_service = rospy.Service('/ardrone_control/Signal', Signal, self.Signal)
-		
-		#Tf
-		self.name = kwargs.get('name', "/goal")
-		self.goal_tf = tf.TransformBroadcaster()
-
-		#Timers
 		self.Ts = kwargs.get('Command_Time', 1)
-		self.trajectory_timer = rospy.Timer(rospy.Duration( self.Ts ), self.Talk, oneshot=False)
-		self.signal_timer = None
+		self.name = kwargs.get('name', "/goal")
 		self.signal = []
 
+		self.subscriber = dict(
+			ardrone_state = rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata),
+			sonar_height = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
+			)
+
+		self.publisher = dict(
+			land = rospy.Publisher('/ardrone/land', Empty, latch = True),
+			takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True),
+			reset = rospy.Publisher('/ardrone/reset', Empty, latch = True),
+			controller_state = rospy.Publisher('/ardrone/controller/state', KeyValue, latch = True),
+			cmd_vel = rospy.Publisher('/cmd_vel', Twist),
+			trajectory = rospy.Publisher('/ardrone/trajectory', Odometry)
+			)
+
+		self.services = dict(
+			signal_service = rospy.Service('/ardrone_control/Signal', Signal, self.Signal)
+			)
+		
+		self.tf_broadcaster = dict( 
+			goal_tf = tf.TransformBroadcaster() 
+			)
+
+		self.timer = dict( 
+			trajectory_timer = rospy.Timer(rospy.Duration( self.Ts ), self.Talk, oneshot=False),
+			signal_timer = None
+			)
+		
 	def RecieveNavdata( self, data ):
 		self.quadrotor.set_state(data.state)
 
@@ -95,7 +101,7 @@ class ROS_Handler(object):
 			if self.quadrotor.state == 'Flying' or self.quadrotor.state == 'Hovering':
 				self.ControlOff()
 				self.signal = SignalResponse( tf = data.time, dt = data.dt, f = data.f, signal = data.signal, direction = data.direction ) 
-				self.signal_timer = rospy.Timer( rospy.Duration(self.signal.dt), self.CmdSignal, oneshot = False )
+				self.timer['signal_timer'] = rospy.Timer( rospy.Duration(self.signal.dt), self.CmdSignal, oneshot = False )
 		return []
 
 	def CmdSignal(self, time):
@@ -109,17 +115,17 @@ class ROS_Handler(object):
 			print "Done sending Signal"
 			self.SignalOff()
 
-		self.cmd_vel.publish( msg ) #always publish so last command makes it stop
+		self.publisher['cmd_vel'].publish( msg ) #always publish so last command makes it stop
 
 	def SignalOff(self):
 		try:
-			self.signal_timer.shutdown( )
+			self.timer['signal_timer'].shutdown( )
 			self.signal = [ ]
 		except AttributeError:
 			pass
 
 		msg = Twist()
-		self.cmd_vel.publish( msg ) 
+		self.publisher['cmd_vel'].publish( msg ) 
 
 	def Talk( self, time ):
 		""" Publishes the Goal Point for the Controller """
@@ -150,9 +156,10 @@ class ROS_Handler(object):
 		msgs.twist.twist.angular.y = self.quadrotor.velocity.pitch
 		msgs.twist.twist.angular.z = self.quadrotor.velocity.yaw
 
-		self.trajectory.publish(msgs)
+		self.publisher['trajectory'].publish(msgs)
 
-		self.goal_tf.sendTransform( (msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
+		self.tf_broadcaster['goal_tf'].sendTransform( 
+			(msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
             (msgs.pose.pose.orientation.x, msgs.pose.pose.orientation.y, msgs.pose.pose.orientation.z, msgs.pose.pose.orientation.w), 
             msgs.header.stamp, 
             msgs.child_frame_id, 
@@ -163,7 +170,7 @@ class ROS_Handler(object):
 		# Note we only send a takeoff message if the drone is landed - an unexpected takeoff is not good!
 		print self.quadrotor.state
 		if(self.quadrotor.state == 'Landed'):
-			self.takeoff.publish()
+			self.publisher['takeoff'].publish()
 			print "Taking Off!"
 		else:
 			print "Drone is not landed"
@@ -172,13 +179,13 @@ class ROS_Handler(object):
 		self.ControlOff()
 		self.SignalOff()
 
-		self.reset.publish()
+		self.publisher['reset'].publish()
 		print "Reset"
 
 	def Land(self, *args):
 		self.ControlOff()
 		self.SignalOff()
-		self.land.publish()
+		self.publisher['land'].publish()
 		print "Landing"
 	
 	def X(self, scale):
@@ -249,7 +256,7 @@ class ROS_Handler(object):
 
 		new_state.value = str( ControllerState.MAP.index( new_state.key ) )
 
-		self.controller_state.publish(new_state)
+		self.publisher['controller_state'].publish(new_state)
 
 		print "Controller New State is:", new_state.key
 	
