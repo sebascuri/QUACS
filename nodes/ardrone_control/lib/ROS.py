@@ -3,6 +3,7 @@
 # Import the ROS libraries, and load the manifest file which through <depend package=.. /> will give us access to the project dependencies
 import roslib; roslib.load_manifest('ardrone_control')
 import rospy
+import tf
 
 class ROS_Object(object):
 	"""docstring for ROS"""
@@ -10,6 +11,8 @@ class ROS_Object(object):
 		super(ROS_Object, self).__init__()
 		if not hasattr(self, 'properties'):
 			self.properties = dict()
+
+		self.tfListener = tf.TransformListener()
 
 	@property 
 	def timer(self):
@@ -61,12 +64,14 @@ class ROS_Object(object):
 	def tf_broadcaster(self):
 		del self.properties['tf_broadcaster']
 
+	"""
 	@property 
-	def tf_listener(self):
-		return self.properties.get('tf_listener', None)
-	@tf_listener.setter 
-	def tf_listener(self, tf_listener):
-		self.properties['tf_listener'] = tf_listener
-	@tf_listener.deleter
-	def tf_listener(self):
-		del self.properties['tf_listener']
+	def tfListener(self):
+		return self.properties.get('tfListener', 0)
+	@tfListener.setter 
+	def tfListener(self, tfListener):
+		self.properties['tfListener'] = tfListener
+	@tfListener.deleter
+	def tfListener(self):
+		del self.properties['tf_tfListener']
+	"""

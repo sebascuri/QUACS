@@ -133,7 +133,7 @@ class ROS_Handler(Quadrotor, ROS_Object, object):
 		msgs = Odometry( )
 		msgs.header.stamp = rospy.Time.now()
 		msgs.header.frame_id = "/nav"
-		msgs.child_frame_id = self.name 
+		msgs.child_frame_id = "/goal" 
 
 		# position
 		msgs.pose.pose.position.x = self.position.x

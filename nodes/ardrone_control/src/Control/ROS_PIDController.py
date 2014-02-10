@@ -115,10 +115,11 @@ class ROS_Handler(DroneController, ROS_Object, object):
 		self.timer = dict( 
 			actuation_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False) 
 			)
-	
+		
 		# self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
 	def RecieveOdometry( self, data , method):
+		# MISSING: changed data from global to local coordinates
 		for key in self.position_control.keys():
 			getattr(self.position_control[key], method)( position = getattr(data.pose.pose.position, key), velocity = getattr(data.twist.twist.linear, key ) )
 
