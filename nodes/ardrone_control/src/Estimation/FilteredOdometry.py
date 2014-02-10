@@ -10,7 +10,6 @@ from nav_msgs.msg import Odometry
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 
 # from Odometry import Odometry as AROdometry
-from Quadrotor import Quadrotor 
 import Process
 from Filter import DigitalFilter
 from ROS_Odometry import ROS_Odometry 

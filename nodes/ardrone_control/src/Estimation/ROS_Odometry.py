@@ -116,7 +116,6 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
         """ Receive Sonar Heigh proximity msgs"""
         pass
 
-
 def main():
     rospy.init_node('SensorFusion_Odometry', anonymous = True)
     node = SensorFusion( processes = [Process.XY_Odometry1(Ts = Command_Time), Process.Z_Odometry1(Ts = Command_Time) ] )

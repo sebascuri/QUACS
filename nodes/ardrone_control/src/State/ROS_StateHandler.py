@@ -31,7 +31,7 @@ Step = dict(
 	z = 0.1, 
 	yaw = pi/20)
 
-class ROS_Handler(ROS_Object, object):
+class ROS_Handler(Quadrotor, ROS_Object, object):
 	"""docstring for ROS_Handler:
 	Subscribed to:
 		ardrone/navdata -> reads state of the ardrone
@@ -50,7 +50,7 @@ class ROS_Handler(ROS_Object, object):
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 
-		self.quadrotor = Quadrotor()
+		# self.quadrotor = Quadrotor()
 		self.Ts = kwargs.get('Command_Time', 1)
 		self.name = kwargs.get('name', "/goal")
 		self.signal = []
@@ -83,7 +83,7 @@ class ROS_Handler(ROS_Object, object):
 			)
 		
 	def RecieveNavdata( self, data ):
-		self.quadrotor.set_state(data.state)
+		self.set_state(data.state)
 
 	def ReceiveSonarHeight(self, data):
 		"""
@@ -98,7 +98,7 @@ class ROS_Handler(ROS_Object, object):
 		if len(self.signal):
 			print "It's still sending data"
 		else:
-			if self.quadrotor.state == 'Flying' or self.quadrotor.state == 'Hovering':
+			if self.state == 'Flying' or self.state == 'Hovering':
 				self.ControlOff()
 				self.signal = SignalResponse( tf = data.time, dt = data.dt, f = data.f, signal = data.signal, direction = data.direction ) 
 				self.timer['signal_timer'] = rospy.Timer( rospy.Duration(self.signal.dt), self.CmdSignal, oneshot = False )
@@ -136,25 +136,25 @@ class ROS_Handler(ROS_Object, object):
 		msgs.child_frame_id = self.name 
 
 		# position
-		msgs.pose.pose.position.x = self.quadrotor.position.x
-		msgs.pose.pose.position.y = self.quadrotor.position.y
-		msgs.pose.pose.position.z = self.quadrotor.position.z
+		msgs.pose.pose.position.x = self.position.x
+		msgs.pose.pose.position.y = self.position.y
+		msgs.pose.pose.position.z = self.position.z
 
 		# orientation
-		msgs.pose.pose.orientation.x = self.quadrotor.orientation.x
-		msgs.pose.pose.orientation.y = self.quadrotor.orientation.y
-		msgs.pose.pose.orientation.z = self.quadrotor.orientation.z
-		msgs.pose.pose.orientation.w = self.quadrotor.orientation.w
+		msgs.pose.pose.orientation.x = self.orientation.x
+		msgs.pose.pose.orientation.y = self.orientation.y
+		msgs.pose.pose.orientation.z = self.orientation.z
+		msgs.pose.pose.orientation.w = self.orientation.w
 		
 		# linear velocity
-		msgs.twist.twist.linear.x = self.quadrotor.velocity.x
-		msgs.twist.twist.linear.y = self.quadrotor.velocity.y
-		msgs.twist.twist.linear.z = self.quadrotor.velocity.z
+		msgs.twist.twist.linear.x = self.velocity.x
+		msgs.twist.twist.linear.y = self.velocity.y
+		msgs.twist.twist.linear.z = self.velocity.z
 
 		# angular velocity
-		msgs.twist.twist.angular.x = self.quadrotor.velocity.roll
-		msgs.twist.twist.angular.y = self.quadrotor.velocity.pitch
-		msgs.twist.twist.angular.z = self.quadrotor.velocity.yaw
+		msgs.twist.twist.angular.x = self.velocity.roll
+		msgs.twist.twist.angular.y = self.velocity.pitch
+		msgs.twist.twist.angular.z = self.velocity.yaw
 
 		self.publisher['trajectory'].publish(msgs)
 
@@ -168,8 +168,8 @@ class ROS_Handler(ROS_Object, object):
 	def TakeOff(self, *args):
 		# Send a takeoff message to the ardrone driver
 		# Note we only send a takeoff message if the drone is landed - an unexpected takeoff is not good!
-		print self.quadrotor.state
-		if(self.quadrotor.state == 'Landed'):
+		print self.state
+		if(self.state == 'Landed'):
 			self.publisher['takeoff'].publish()
 			print "Taking Off!"
 		else:
@@ -200,23 +200,23 @@ class ROS_Handler(ROS_Object, object):
 	def Yaw(self, scale):
 		self.change_set_point('yaw', scale) 
 		# Order is important: first change set point in yaw, then update quaternions.
-		if self.quadrotor.position.yaw >=  pi :
-			self.quadrotor.position.yaw -= 2 * pi;
-		if self.quadrotor.position.yaw < -pi:
-			self.quadrotor.position.yaw += 2 * pi;
+		if self.position.yaw >=  pi :
+			self.position.yaw -= 2 * pi;
+		if self.position.yaw < -pi:
+			self.position.yaw += 2 * pi;
 
-		quaternion = tf.transformations.quaternion_from_euler(self.quadrotor.position.yaw, self.quadrotor.position.pitch, self.quadrotor.position.roll, 'rzyx')
+		quaternion = tf.transformations.quaternion_from_euler(self.position.yaw, self.position.pitch, self.position.roll, 'rzyx')
 		
-		self.quadrotor.orientation.x = quaternion[0]
-		self.quadrotor.orientation.y = quaternion[1]
-		self.quadrotor.orientation.z = quaternion[2]
-		self.quadrotor.orientation.w = quaternion[3]
+		self.orientation.x = quaternion[0]
+		self.orientation.y = quaternion[1]
+		self.orientation.z = quaternion[2]
+		self.orientation.w = quaternion[3]
 
 	def ControlOff(self, *args):
 		self.change_controller_state('Off')
 
 	def ControlOn(self, *args):
-		if self.quadrotor.state == 'Flying' or self.quadrotor.state == 'Hovering':
+		if self.state == 'Flying' or self.state == 'Hovering':
 			self.change_controller_state('On')
 
 	def default_chirp_data(self, direction):
@@ -242,9 +242,9 @@ class ROS_Handler(ROS_Object, object):
 		self.Signal( self.default_chirp_data('yaw') ) 
 
 	def change_set_point(self, direction, scale):
-		# it changes an attribute from the self.quadrotor.position by a fraction of a Step.
-		setattr(self.quadrotor.position, direction, 
-			getattr(self.quadrotor.position, direction) + scale * Step[direction] )
+		# it changes an attribute from the self.position by a fraction of a Step.
+		setattr(self.position, direction, 
+			getattr(self.position, direction) + scale * Step[direction] )
 
 	def change_controller_state(self, state_new_name):
 		new_state = KeyValue()

@@ -15,6 +15,7 @@ class Quadrotor(BasicObject, object):
 		implemented sensors and processes
 	"""
 	def __init__(self, **kwargs):
+		super(Quadrotor, self).__init__()
 		self.properties = dict(
 			position = kwargs.get('position', SixDofObject() ),
 			orientation = kwargs.get('orientation', Quaternion() ) ,
