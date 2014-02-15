@@ -102,17 +102,17 @@ class ROS_Handler(DroneController, ROS_Object, object):
 	def __init__(self, **kwargs):
 		super(ROS_Handler, self).__init__()
 		
-		self.subscriber = dict(
+		self.subscriber.update(
 			controller_state = rospy.Subscriber('/ardrone/controller/state', KeyValue, callback = self.RecieveState),
 			state_estimation = rospy.Subscriber('/ardrone/sensorfusion/navdata', Odometry, callback = self.RecieveOdometry, callback_args = 'set_input' ),
 			set_point = rospy.Subscriber('/ardrone/trajectory', Odometry, callback = self.RecieveOdometry, callback_args = 'change_set_point' )
 			)
 
-		self.publisher = dict( 
+		self.publisher.update( 
 			command_velocity = rospy.Publisher('/cmd_vel', Twist)
 			)
 
-		self.timer = dict( 
+		self.timer.update( 
 			actuation_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False) 
 			)
 		

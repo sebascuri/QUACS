@@ -8,6 +8,7 @@ import rospy
 from sensor_msgs.msg import Imu, Range, NavSatFix
 from nav_msgs.msg import Odometry 
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
+from diagnostic_msgs.msg import KeyValue # added for State Handling
 
 # from Odometry import Odometry as AROdometry
 from Quadrotor import Quadrotor 
@@ -41,22 +42,22 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
         super(ROS_Odometry, self).__init__(**kwargs)
         self.name = kwargs.get('name', "/local")
 
-        self.subscriber = dict(
+        self.subscriber.update(
             raw_navdata = rospy.Subscriber('/ardrone/navdata',Navdata, callback = self.ReceiveNavdata ),
-            raw_gps = rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS),
-            raw_imu = rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu ),
-            raw_sonar = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
+            # raw_gps = rospy.Subscriber('/fix', NavSatFix, callback = self.ReceiveGPS),
+            # raw_imu = rospy.Subscriber('/ardrone/imu', Imu, callback = self.ReceiveImu ),
+            # raw_sonar = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
             )
 
-        self.publisher = dict(
+        self.publisher.update(
             state = rospy.Publisher('/ardrone/sensorfusion/navdata', Odometry)
             )
-        
-        self.tf_broadcaster = dict( 
+
+        self.tf_broadcaster.update( 
             local_tf = tf.TransformBroadcaster()
             )
 
-        self.timer = dict( 
+        self.timer.update( 
             publish_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Command, oneshot=False)
             )
 
@@ -74,8 +75,6 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
         msgs.pose.pose.position.x = self.position.x
         msgs.pose.pose.position.y = self.position.y
         msgs.pose.pose.position.z = self.position.z
-
-        # quaternion = tf.transformations.quaternion_from_euler(self.position.yaw, self.position.pitch, self.position.roll, 'rzyx')
         
         msgs.pose.pose.orientation.x = self.orientation.x
         msgs.pose.pose.orientation.y = self.orientation.y
@@ -100,7 +99,7 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
         self.position.set_properties(dict(roll = navdata.rotX * pi/180.0, pitch = navdata.rotY * pi/180.0, yaw = navdata.rotZ * pi/180.0))
         self.velocity.set_properties(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
         self.acceleration.set_properties(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
-        self.orientation.set_euler(roll = navdata.rotX * pi/180.0 , pitch = navdata.rotY * pi/180.0 , yaw = navdata.rotZ * pi/180.0  )
+        # self.orientation.set_euler(roll = navdata.rotX * pi/180.0 , pitch = navdata.rotY * pi/180.0 , yaw = navdata.rotZ * pi/180.0  )
         
         self.set_state(navdata.state)
         self.battery = navdata.batteryPercent
@@ -108,8 +107,7 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
     def ReceiveGPS(self, gpsdata):
         pass
 
-    def ReceiveImu(self, ImuRaw):
-        """ Receive RAW imu msgs""" 
+    def ReceiveImu(self, imu_raw):
         pass
 
     def ReceiveSonarHeight(self, Range):
@@ -117,8 +115,8 @@ class ROS_Odometry(Quadrotor, ROS_Object, object):
         pass
 
 def main():
-    rospy.init_node('SensorFusion_Odometry', anonymous = True)
-    node = SensorFusion( processes = [Process.XY_Odometry1(Ts = Command_Time), Process.Z_Odometry1(Ts = Command_Time) ] )
+    # rospy.init_node('SensorFusion_Odometry', anonymous = True)
+    node = ROS_Odometry( processes = [Process.XY_Odometry1(Ts = Command_Time), Process.Z_Odometry1(Ts = Command_Time) ] )
     rospy.spin()
 
     

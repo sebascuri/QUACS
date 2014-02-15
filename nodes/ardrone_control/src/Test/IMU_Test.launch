@@ -1,0 +1,18 @@
+<launch>
+	<!-- include Simulator -->
+	<arg name="simulator" default="true"/>
+	<include file="$(find cvg_sim_test)/launch/3boxes_room.launch" if="$(arg simulator)"/>
+
+	<!-- include realtime plot -->
+	<arg name="plot" default="true"/>
+	<node pkg="rxtools" type="rxplot" name="plotter" args="/ardrone/kalman_imu/pose/pose/orientation/x:y:z:w,/ground_truth/state/pose/pose/orientation/z:w" if="$(arg plot)" />
+	<!--node pkg="rxtools" type="rxplot" name="plotter" args="/ardrone/imu/orientation/z,/ground_truth/state/pose/pose/orientation/z" if="$(arg plot)" /-->
+
+	<!--node pkg="rxtools" type="rxplot" name="plotter" args="/ardrone/kalman_imu/pose/pose/orientation/x:y:z:w,/ground_truth/state/pose/pose/orientation/x:y:z:w" if="$(arg plot)" /-->
+	<!--node pkg="rxtools" type="rxplot" name="plotter" args="/ardrone/kalman_imu/pose/pose/orientation/x:y:z:w, /ground_truth/state/pose/pose/orientation/x:y:z:w" /-->
+
+	<!-- rosrun Estimator -->
+	<rosparam file="$(find ardrone_control)/parameters/Filter_Parameters.yaml" command="load" />
+	<node name="Estimator" pkg="ardrone_control" type="IMU_Test.py" respawn="false" output="screen" />
+
+</launch>

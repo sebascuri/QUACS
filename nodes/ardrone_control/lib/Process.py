@@ -5,24 +5,41 @@ from math import pi, cos, sin, sqrt
 import numpy as np 
 import numpy.matlib as matlib 
 
+try:
+	import tf;
+except ImportError:
+	import roslib; roslib.load_manifest('ardrone_control')
+	import rospy
+	import tf;
+
+
 # from Quadrotor import SixDofObject
 from BasicObject import BasicObject, SixDofObject, Quaternion
+
+def quaternion_matrix(quaternion):
+	x = quaternion[0]; y = quaternion[1]; z = quaternion[2]; w = quaternion[3];
+	return np.mat([ 
+		[w, -x, -y, -z ],
+		[x, w, z, -y ],
+		[y, -z, w, x ],
+		[z, y, -x, w]
+		])
 
 class BasicProcess(BasicObject, object):
 	"""docstring for BasicProcess
 	Each process has an predict mehtod that predict the variables in the state list 
-	In each update variable X and Jacobian is also updated
+	In each update variable X and ProcessJacobian is also updated
 	"""
 	def __init__(self, **kwargs):
-		# super(BasicProcess, self).__init__( **kwargs )
-		self.properties = dict( stateList = kwargs.get('stateList', list()))  #List from property to index in X state
+		super(BasicProcess, self).__init__( **kwargs )
+		self.properties.update( stateList = kwargs.get('stateList', list()))  #List from property to index in X state
 		self.properties.update(
 			X = kwargs.get('X', matlib.zeros( [len(self), 1] )),
-			Jacobian = kwargs.get('Jacobian', matlib.eye( len(self) ) ),
+			ProcessJacobian = kwargs.get('ProcessJacobian', matlib.eye( len(self) ) ),
 			Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ) ),
 			Ts = kwargs.get('Ts', None),
 			position = kwargs.get('position', SixDofObject()),
-			orientation = kwargs.get('orientation', Quaternion()),
+			quaternion = kwargs.get('quaternion', Quaternion()),
 			velocity = kwargs.get('velocity', SixDofObject()),
 			acceleration = kwargs.get('acceleration', SixDofObject()) 
 			)
@@ -30,13 +47,13 @@ class BasicProcess(BasicObject, object):
 		"""
 		self.stateList = kwargs.get('stateList', list())  #List from property to index in X state
 		self.X = kwargs.get('X', matlib.zeros( [len(self.stateList), 1] ))
-		self.Jacobian = kwargs.get('Jacobian', matlib.eye( len(self.stateList) ) )
+		self.ProcessJacobian = kwargs.get('ProcessJacobian', matlib.eye( len(self.stateList) ) )
 		self.Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ))
 		self.Ts = kwargs.get('Ts', None)
 
 
 		self.position = kwargs.get('position', SixDofObject())
-		self.orientation = kwargs.get('orientation', Quaternion())
+		self.quaternion = kwargs.get('quaternion', Quaternion())
 		self.velocity = kwargs.get('velocity', SixDofObject())
 		self.acceleration = kwargs.get('acceleration', SixDofObject())
 		"""
@@ -98,14 +115,14 @@ class BasicProcess(BasicObject, object):
 		del self.properties['X']
 
 	@property
-	def Jacobian(self):
-		return self.properties.get('Jacobian', matlib.eye( len(self) ) )
-	@Jacobian.setter
-	def Jacobian(self, A):
-		self.properties['Jacobian'] = A
-	@Jacobian.deleter
-	def Jacobian(self):
-		del self.properties['Jacobian']	
+	def ProcessJacobian(self):
+		return self.properties.get('ProcessJacobian', matlib.eye( len(self) ) )
+	@ProcessJacobian.setter
+	def ProcessJacobian(self, A):
+		self.properties['ProcessJacobian'] = A
+	@ProcessJacobian.deleter
+	def ProcessJacobian(self):
+		del self.properties['ProcessJacobian']	
 
 	@property
 	def Covariance(self):
@@ -129,14 +146,14 @@ class BasicProcess(BasicObject, object):
 		del self.properties['position']	
 
 	@property
-	def orientation(self):
-		return self.properties.get('orientation', Quaternion())
-	@orientation.setter
-	def orientation(self, orientation):
-		self.properties['orientation'] = orientation
-	@orientation.deleter
-	def orientation(self):
-		del self.properties['orientation']	
+	def quaternion(self):
+		return self.properties.get('quaternion', Quaternion())
+	@quaternion.setter
+	def quaternion(self, quaternion):
+		self.properties['quaternion'] = quaternion
+	@quaternion.deleter
+	def quaternion(self):
+		del self.properties['quaternion']	
 
 	@property
 	def velocity(self):
@@ -174,7 +191,7 @@ class XY_Odometry1(BasicProcess, object):
 		self.position.x += self.Ts * ( self.velocity.x * cos(self.position.yaw) - self.velocity.y * sin(self.position.yaw) )
 		self.position.y += self.Ts * ( self.velocity.x * sin(self.position.yaw) + self.velocity.y * cos(self.position.yaw) )
 
-		self.Jacobian = np.matrix([ 
+		self.ProcessJacobian = np.matrix([ 
 				[1, 0, self.Ts * ( - self.velocity.x * sin(self.position.yaw) - self.velocity.y  * cos(self.position.yaw))],
 				[0, 1, self.Ts * ( + self.velocity.x * cos(self.position.yaw) + self.velocity.y  * sin(self.position.yaw))], 
 				[0, 0, 1] ])
@@ -198,7 +215,7 @@ class Z_Odometry1(BasicProcess, object):
 
 		self.position.z += self.Ts * self.velocity.z
 
-		self.Jacobian = np.matrix( [[ 1 ]])
+		self.ProcessJacobian = np.matrix( [[ 1 ]])
 
 		self.set_X( )
 		return dict(position = self.position)
@@ -223,7 +240,7 @@ class XY_Odometry2(BasicProcess, object):
 			+ 0.5 * self.Ts ** 2 * (self.acceleration.x * sin(self.position.yaw) + self.velocity.x * self.velocity.yaw * cos(self.position.yaw) 
 			+ self.acceleration.y * cos(self.position.yaw) - self.velocity.y * self.velocity.yaw * sin(self.position.yaw) ) );
 
-		self.Jacobian = np.matrix( [ 
+		self.ProcessJacobian = np.matrix( [ 
 				[1, 0, self.Ts * ( - self.velocity.x * sin(self.position.yaw) - self.velocity.y  * cos(self.position.yaw)) + 0.5 * self.Ts ** 2 *( 
 					- self.acceleration.x * sin(self.position.yaw) - self.velocity.x * self.velocity.yaw * cos(self.position.yaw) 
 					- self.acceleration.y * cos(self.position.yaw) + self.velocity.y * self.velocity.yaw * sin(self.position.yaw) )],
@@ -248,7 +265,7 @@ class Z_Odometry2(BasicProcess, object):
 
 		self.position.z += self.Ts * self.velocity.z + 0.5 * self.Ts ** 2 * self.acceleration.z 
 		
-		self.Jacobian = np.matrix( [[ 1 ]])
+		self.ProcessJacobian = np.matrix( [[ 1 ]])
 
 		self.set_X( )
 
@@ -258,45 +275,54 @@ class SO3(BasicProcess, object):
 	"""docstring for SO3
 	SO3 predicition in quaternion form. 
 	"""
-	stateList = ['orientation.w', 'orientation.x', 'orientation.y', 'orientation.z']
+	stateList = ['quaternion.w', 'quaternion.x', 'quaternion.y', 'quaternion.z']
 	def __init__(self, *args, **kwargs):	
 		super(SO3, self).__init__(stateList = SO3.stateList, *args, **kwargs)
-		
+		self.X = np.mat([1.0, 0.0, 0.0, 0.0]).transpose()
+
 	def predict(self, **kwargs):
 		super(SO3, self).predict( **kwargs )
+
+		qdot = 0.5 * np.roll( np.matrix([
+				tf.transformations.quaternion_multiply( 
+					( self.quaternion.get_quaternion() ), 
+					( self.velocity.roll, self.velocity.pitch, self.velocity.yaw, 0 ), 
+					)
+			]), 1).transpose() 
+
+		self.X += self.Ts * qdot
+
+		self.set_quaternion()
+
+		self.ProcessJacobian = quaternion_matrix( self.quaternion.get_quaternion( ) )
 		
-		self.orientation.w += 0.5 * self.Ts * ( - self.velocity.roll * self.orientation.x - 
-			self.velocity.pitch * self.orientation.y - self.velocity.yaw * self.orientation.z ) 
-
-		self.orientation.x += 0.5 * self.Ts * ( + self.velocity.roll * self.orientation.w + 
-			self.velocity.yaw * self.orientation.y - self.velocity.pitch * self.orientation.z )
-
-		self.orientation.y += 0.5 * self.Ts * ( + self.velocity.pitch * self.orientation.w - 
-			self.velocity.yaw * self.orientation.y - self.velocity.roll * self.orientation.z)
-
-		self.orientation.z += 0.5 * self.Ts * ( + self.velocity.yaw * self.orientation.w + 
-			self.velocity.pitch * self.orientation.x - self.velocity.roll * self.orientation.y)
-
-		norm = 0
-		for key, value in self.orientation:
-			norm += value ** 2
-
-		norm = sqrt(norm)
-
-		for key, value in self.orientation:
-			setattr(self.orientation, key , value/norm)
 
 
-		self.Jacobian = np.matrix( [ 
-			[ 1, - 0.5 * self.Ts *  self.velocity.roll, - 0.5 * self.Ts * self.velocity.pitch, - 0.5 * self.Ts * self.velocity.yaw ], 
-			[ 0.5 * self.Ts * self.velocity.roll, 1, 0.5 * self.Ts * self.velocity.yaw, - 0.5 * self.Ts * self.velocity.pitch ],
-			[ 0.5 * self.Ts * self.velocity.pitch, - 0.5 * self.Ts * self.velocity.yaw, 1, 0.5 * self.Ts * self.velocity.roll], 
-			[ 0.5 * self.Ts * self.velocity.yaw, 0.5 * self.Ts * self.velocity.pitch, - 0.5 * self.Ts * self.velocity.roll, 1] ] )
+		# return dict(quaternion = self.quaternion)	
 
-		
-		self.set_X( )	
+	def set_quaternion(self):
+		""" sets quaternion from state vector
+			normalizes quaternion
+			resets state vector normalized
+		"""
+		for key in self.stateList:
+			attribute = key.split('.')[0]
+			direction = key.split('.')[1]
+			if 'quaternion' == attribute:
+				setattr( self.quaternion, direction, self.X.item( self.stateList.index(key) ) )
+		self.quaternion.normalize()
 
-		return dict(orientation = self.orientation)	
+		for key in self.stateList:
+			attribute = key.split('.')[0]
+			direction = key.split('.')[1]
+			if 'quaternion' == attribute:
+				self.X[ self.stateList.index(key) ] = getattr(self.quaternion, direction)  
+
+	def get_quaternion(self):
+		return self.quaternion.properties
+
+	def get_eulers(self):
+		return self.quaternion.get_euler()
 
 def process_test( process_object ):
 	process = process_object;
@@ -305,7 +331,7 @@ def process_test( process_object ):
 	print 'X', process.X 
 	process.predict(position = SixDofObject(x = 2, y = -1, z = 3, yaw = pi/4), velocity = SixDofObject(x = 3, y = 2, z = -2, pitch = pi/2, roll = -pi/6 ), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 5))
 	print 'X', process.X
-	print 'P', process.Jacobian
+	print 'P', process.ProcessJacobian
 	print 'R', process.Covariance
 	process.predict(position = SixDofObject(x = 5, y = -1, z = 2), velocity = SixDofObject(x = 3, y = 2, z = -2, yaw = pi/4), orientation = Quaternion(w = 1, x = 0) , acceleration = SixDofObject(x = -1, y = 2, z = 0))
 
@@ -315,7 +341,7 @@ def process_test( process_object ):
 	process.predict()
 	print 'X', process.X 
 
-	print 'P', process.Jacobian
+	print 'P', process.ProcessJacobian
 	print 'R', process.Covariance
 
 	print vars(process).keys()

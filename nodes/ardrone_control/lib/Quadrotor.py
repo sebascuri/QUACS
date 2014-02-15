@@ -5,6 +5,7 @@ from math import pi
 from BasicObject import BasicObject, SixDofObject, Quaternion, Motor, ArDroneState
 import Process
 import Sensors
+import SensorFusion
 # from EKF import EKF
 
 class Quadrotor(BasicObject, object):
@@ -16,7 +17,7 @@ class Quadrotor(BasicObject, object):
 	"""
 	def __init__(self, **kwargs):
 		super(Quadrotor, self).__init__()
-		self.properties = dict(
+		self.properties.update(
 			position = kwargs.get('position', SixDofObject() ),
 			orientation = kwargs.get('orientation', Quaternion() ) ,
 			velocity = kwargs.get('velocity', SixDofObject() ),
@@ -25,8 +26,10 @@ class Quadrotor(BasicObject, object):
 			state = kwargs.get('state', ArDroneState()) ,
 			motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] )  ,
 			processes = kwargs.get('processes', list() ),
-			sensors = kwargs.get('sensors', list() )
+			sensors = kwargs.get('sensors', list() ), 
+			imu = kwargs.get('imu', None )
 			)
+
 
 	def predict( self ):
 		for process in self.processes:
@@ -129,6 +132,16 @@ class Quadrotor(BasicObject, object):
 		del self.properties['motors']	
 
 	@property
+	def imu(self):
+		return self.properties.get('imu', None)
+	@imu.setter
+	def imu(self, imu):
+		self.properties['imu'] = imu
+	@imu.deleter
+	def imu(self):
+		del self.properties['imu']
+
+	@property
 	def processes(self):
 		return self.properties.get('processes', list())
 	@processes.setter
@@ -212,8 +225,6 @@ def quadrotor_test():
 	parrot.set_state('Hovering')
 	print parrot.state
 
-
-
 def main():
 	quadrotor_test()
 	
@@ -233,8 +244,4 @@ def main():
 
 	#print parrot.velocity.yaw
 	
-
-
-
-
 if __name__ == '__main__': main()

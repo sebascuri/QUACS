@@ -2,10 +2,9 @@
 #!/users/sebastiancuri/anaconda/bin/python
 
 from math import pi, sqrt
-try:
-	import tf
-except ImportError:
-	pass
+import roslib; roslib.load_manifest('ardrone_control')
+import rospy;  
+import tf; 
 
 
 class BasicObject(object):
@@ -156,18 +155,21 @@ class Quaternion(BasicObject, object):
 	Has a method that from input euler angles it assigns the quaternion
 	"""
 	def __init__(self, **kwargs):
+		# super(Quaternion, self).__init__(**kwargs)
 		self.properties = dict( 
 			x = kwargs.get('x', 0.0), 
 			y = kwargs.get('y', 0.0), 
 			z = kwargs.get('z', 0.0), 
 			w = kwargs.get('w', 1.0) )
 
+		
 		self.normalize()
-		# self.x = kwargs.get('x', 0.0)
-		# self.y = kwargs.get('y', 0.0)
-		# self.z = kwargs.get('z', 0.0)
-		# self.w = kwargs.get('w', 1.0)
-		# super(Quaternion, self).__init__(**kwargs)
+		self.set_quaternion()
+
+
+	def __iter__(self):
+		for direction in self.quaternion:
+			yield direction
 
 	def set_euler(self, *args, **kwargs):
 		
@@ -194,15 +196,27 @@ class Quaternion(BasicObject, object):
 		self.z = quaternion[2]
 		self.w = quaternion[3]
 
+	def get_euler(self):
+		roll, pitch, yaw = tf.transformations.euler_from_quaternion( (self.x, self.y, self.z, self.w) ) 
+		return dict(roll = roll, pitch = pitch, yaw = yaw) 
+
+	def get_quaternion(self):
+		return (self.x, self.y, self.z, self.w)
+	def set_quaternion(self):
+		self.quaternion = (self.x, self.y, self.z, self.w)
 	def normalize(self):
-		norm = 0
+		norm = 0.0
 		for value in self.properties.values():
 			norm += value ** 2
 
 		norm = sqrt(norm)
 
-		for key, value in self.properties.items():
-			setattr(self, key, value/norm )
+
+		if norm == 0:
+			self.x = 0.0; self.y = 0.0; self.z = 0.0; self.w = 1.0;
+		else:
+			for key, value in self.properties.items():
+				setattr(self, key, value/norm )
 
 	# Object Properties
 

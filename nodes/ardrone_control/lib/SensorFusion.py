@@ -1,18 +1,174 @@
-#!/users/sebastiancuri/anaconda/bin/python
 #!/usr/bin/env python
 
-from math import pi, cos, sin
+from math import pi, cos, sin, sqrt
 import numpy as np 
 import numpy.matlib as matlib
+import numpy.linalg as linalg
 import scipy.linalg as sp 
+
+
+try:
+	import tf;
+except ImportError:
+	import roslib; roslib.load_manifest('ardrone_control')
+	import rospy; 
+	import tf;
+
 
 # from Odometry import Odometry1 as Odometry 
 import Process
 import Sensors
-from Quadrotor import Quadrotor 
+import Filter
+# from Quadrotor import Quadrotor 
+from BasicObject import BasicObject, SixDofObject, Quaternion
+
 # from BasicObject import BasicObject
 
-class SensorFusion(Quadrotor, object):
+class IMU_Filter(Sensors.IMU, Process.SO3, object):
+	def __init__(self, **kwargs):
+		super(IMU_Filter, self).__init__(**kwargs)
+
+	def __len__(self):
+		return len(self.stateList)
+
+	def measure(self, imu_raw):
+		super(IMU_Filter, self).measure(imu_raw) #measure sensors 
+
+		for attribute in self.sensors["gyroscope"].measurementList:
+			setattr(self.velocity, attribute, getattr(self.sensors["gyroscope"], attribute)) 
+			# set sensor measurements into process
+	
+class IMU_Kalman(IMU_Filter, Filter.ExtendedKalmanFilter, object):
+	"""docstring for IMU_Kalman"""
+
+	def __init__(self, **kwargs):
+		super(IMU_Kalman, self).__init__(**kwargs)
+		# self.Ts = kwargs.get('Ts', 0.010)
+		# self.quaternion = kwargs.get('quaternion', Quaternion())
+
+		self.Z = np.mat([0.0, 0.0, 0.0]).transpose()
+		self.StateMap = np.mat([0.0, 0.0, 0.0]).transpose()
+
+		
+
+		self.ProcessCovariance  = np.mat( [
+			[ 0.005, 0., 0., 0.],
+			[ 0., 0.005, 0., 0.],
+			[ 0., 0., 0.005, 0.],
+			[ 0., 0., 0., 0.005],
+			])
+
+		self.MeasurementCovariance = 10*np.mat( [
+			[1., 0., 0.],
+			[0., 1., 0.],
+			[0., 0., 1.]
+			])
+
+		self.ProcessJacobian = matlib.zeros( [len(self.stateList), len(self.stateList)] )
+		self.MeasurementJacobian = matlib.zeros( [len(self.measurementList), len(self.stateList) ])
+
+	def __len__(self):
+		return len(self.stateList)
+
+	def predict(self):
+		super(IMU_Kalman, self).predict()
+		self.predict_error()
+
+	def correct( self ):	
+		self.Z = np.mat([ 
+			self.sensors['accelerometer'].roll, 
+			self.sensors['accelerometer'].pitch,
+			self.sensors['dummy_yaw'].yaw 
+			]).transpose()
+
+		self.StateMap = np.mat( tf.transformations.euler_from_quaternion( self.quaternion.get_quaternion(), axes = 'sxyz'  ) ).transpose();
+
+		c11 = 1 - 2 * (self.quaternion.y**2 + self.quaternion.z**2)
+		c33 = 1 - 2 * (self.quaternion.x**2 + self.quaternion.y**2)
+		c21 = 2 * ( self.quaternion.x*self.quaternion.y + self.quaternion.w*self.quaternion.z )
+		c31 = 2 * ( self.quaternion.x*self.quaternion.z - self.quaternion.w*self.quaternion.y )
+		c32 = 2 * ( self.quaternion.y*self.quaternion.z + self.quaternion.w*self.quaternion.x )
+
+
+		self.MeasurementJacobian = np.asmatrix( 
+			matlib.diag( [2 * c33/sqrt(c33 ** 2 + c32 ** 2), 2 / sqrt(1 - c31**2), 2 * c11/sqrt(c11 ** 2 + c21 ** 2)] ) 
+		) * np.mat([
+			[ self.quaternion.x , self.quaternion.w, self.quaternion.z, self.quaternion.y],
+			[ self.quaternion.y, -self.quaternion.z, self.quaternion.w, -self.quaternion.x ],
+			[ self.quaternion.z, self.quaternion.y, self.quaternion.x, self.quaternion.w]
+		 ]) + np.asmatrix(
+		 	matlib.diag( [4 * c32/sqrt(c33 ** 2 + c32 ** 2), 0 , 4 * c21/sqrt(c11 ** 2 + c21 ** 2) ]) 
+		 ) *  np.mat([
+		 	[ 0, self.quaternion.x, self.quaternion.y, 0],
+		 	[ 0, 0, 0, 0],
+		 	[ 0, 0 , self.quaternion.y, self.quaternion.z]
+		]) 
+
+		super(IMU_Kalman, self).correct()
+		self.set_quaternion()
+
+class IMU_Magdwick(IMU_Filter, Filter.MagdwickFilter, object):
+	def __init__(self, **kwargs):
+		super(IMU_Magdwick, self).__init__(**kwargs)
+
+class IMU_Mahoney(IMU_Filter, Filter.MahoneyFilter, object):
+	def __init__(self, **kwargs):
+		super(IMU_Mahoney, self).__init__(**kwargs)
+
+
+
+def test_gps():
+	print "New Test"
+	Ts = 1
+	Fusion = SensorFusion( sensors = [Sensors.GPS(), Sensors.DummyYaw()], processes = [Process.XY_Odometry1( Ts = Ts ) , Process.Z_Odometry1( Ts = Ts)] )
+	Fusion.velocity.set_properties( dict(x=2, y = 3, z = -1) )
+
+	print Fusion.sensors
+	for sensor in Fusion.sensors:
+		print sensor, len(sensor)
+		print sensor == 'GPS'
+		print sensor.Z 
+
+	print Fusion.Z 
+	for process in Fusion.processes:
+		print repr(process), len(process)
+		print process.predict()
+		print process.predict()
+
+	print Fusion.X 
+	print Fusion.ProcessJacobian
+	Fusion.predict() 
+	print Fusion.X 
+	print Fusion.ProcessJacobian
+	print Fusion.MeasurementJacobian
+	Fusion.predict(); print 'X', Fusion.X 
+	Fusion.correct(); print Fusion.X 
+	print Fusion.MeasurementJacobian
+
+	for sensor in Fusion.sensors:
+		if sensor == 'GPS':
+			sensor.measure(latitude = 0.1, altitude = 2, longitude = 12)
+			print sensor.Z 
+
+	print"Predict"; Fusion.predict(); print Fusion.X; print Fusion.position
+	print"Correct";Fusion.correct(); print Fusion.X; print Fusion.position
+	
+	print vars(Fusion)
+
+def test_imu():
+	imu = IMU_Kalman( Ts = 0.01 )
+	imu.predict()
+	imu.correct()
+
+	print vars(imu)
+							
+def main():
+	test_imu()
+	# print 'Z =', Fusion.Z
+	# print 'X =', Fusion.X 
+
+
+class SensorFusion( object):
 	"""docstring for SensorFusion:
 	Fuses a big list of processes and sensors, 
 
@@ -46,8 +202,6 @@ class SensorFusion(Quadrotor, object):
 	def init_sensors(self):
 		for sensor in self.sensors:
 			self.measurementList += sensor.measurementList
-
-		
 
 		for sensor in self.sensors:
 			if self.Z is not None:
@@ -291,48 +445,8 @@ class SensorFusion(Quadrotor, object):
 	@KalmanGain.deleter
 	def KalmanGain(self):
 		del self.properties['KalmanGain']
-
-					
-def main():
-	print "New Test"
-	Ts = 1
-	Fusion = SensorFusion( sensors = [Sensors.GPS(), Sensors.DummyYaw()], processes = [Process.XY_Odometry1( Ts = Ts ) , Process.Z_Odometry1( Ts = Ts)] )
-	Fusion.velocity.set_properties( dict(x=2, y = 3, z = -1) )
-
-	print Fusion.sensors
-	for sensor in Fusion.sensors:
-		print sensor, len(sensor)
-		print sensor == 'GPS'
-		print sensor.Z 
-
-	print Fusion.Z 
-	for process in Fusion.processes:
-		print repr(process), len(process)
-		print process.predict()
-		print process.predict()
-
-	print Fusion.X 
-	print Fusion.ProcessJacobian
-	Fusion.predict() 
-	print Fusion.X 
-	print Fusion.ProcessJacobian
-	print Fusion.MeasurementJacobian
-	Fusion.predict(); print 'X', Fusion.X 
-	Fusion.correct(); print Fusion.X 
-	print Fusion.MeasurementJacobian
-
-	for sensor in Fusion.sensors:
-		if sensor == 'GPS':
-			sensor.measure(latitude = 0.1, altitude = 2, longitude = 12)
-			print sensor.Z 
-
-	print"Predict"; Fusion.predict(); print Fusion.X; print Fusion.position
-	print"Correct";Fusion.correct(); print Fusion.X; print Fusion.position
-	
-	print vars(Fusion)
-
-
-	# print 'Z =', Fusion.Z
-	# print 'X =', Fusion.X 
 	
 if __name__ == '__main__': main()
+
+
+

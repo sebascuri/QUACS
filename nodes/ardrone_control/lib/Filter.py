@@ -4,6 +4,19 @@ from BasicObject import BasicObject
 from collections import deque
 import math
 
+import numpy as np 
+import numpy.matlib as matlib
+import numpy.linalg as linalg
+import scipy.linalg as sp 
+import rospy
+
+try:
+	import tf;
+except ImportError:
+	pass
+
+
+
 class DigitalFilter(BasicObject, object):
 	"""docstring for DigitalFilter
 		A digital filtered implemented as a Direct Form II parallel algorithm. 
@@ -112,6 +125,277 @@ class DigitalFilter(BasicObject, object):
 	def b(self):
 		del self.properties['b']
 
+class ExtendedKalmanFilter(BasicObject, object):
+	"""docstring for ExtendedKalmanFilter"""
+	def __init__(self, **kwargs):
+		super(ExtendedKalmanFilter, self).__init__()
+
+	def predict_error(self):
+		self.ErrorCovariance = self.ProcessJacobian * self.ErrorCovariance * self.ProcessJacobian.transpose() + self.ProcessCovariance
+
+	def correct(self):
+		self.KalmanGain = self.ErrorCovariance * self.MeasurementJacobian.transpose() *  np.linalg.inv( self.MeasurementJacobian * self.ErrorCovariance * self.MeasurementJacobian.transpose() + self.MeasurementCovariance )
+		self.X = self.X + self.KalmanGain * ( self.Z - self.StateMap)
+		self.ErrorCovariance = (matlib.eye(np.size( self.X ) ) - self.KalmanGain * self.MeasurementJacobian ) * self.ErrorCovariance
+
+
+	@property
+	def X(self):
+		return self.properties.get('X', None)
+	@X.setter
+	def X(self, X):
+		self.properties['X'] = X
+	@X.deleter
+	def X(self):
+		del self.properties['X']
+
+	@property
+	def Z(self):
+		return self.properties.get('Z', None)
+	@Z.setter
+	def Z(self, Z):
+		self.properties['Z'] = Z
+	@Z.deleter
+	def Z(self):
+		del self.properties['Z']
+
+	@property
+	def StateMap(self):
+		return self.properties.get('StateMap', None)
+	@StateMap.setter
+	def StateMap(self, StateMap):
+		self.properties['StateMap'] = StateMap
+	@StateMap.deleter
+	def StateMap(self):
+		del self.properties['StateMap']
+
+	@property 
+	def ProcessJacobian(self):
+		return self.properties.get('ProcessJacobian', None)
+	@ProcessJacobian.setter
+	def ProcessJacobian(self, Q):
+		self.properties['ProcessJacobian'] = Q
+	@ProcessJacobian.deleter
+	def ProcessJacobian(self):
+		del self.properties['ProcessJacobian']
+
+	@property 
+	def MeasurementJacobian(self):
+		return self.properties.get('MeasurementJacobian', None)
+	@MeasurementJacobian.setter
+	def MeasurementJacobian(self, Q):
+		self.properties['MeasurementJacobian'] = Q
+	@MeasurementJacobian.deleter
+	def MeasurementJacobian(self):
+		del self.properties['MeasurementJacobian']
+
+	@property 
+	def ErrorCovariance(self):
+		return self.properties.get('ErrorCovariance', np.matlib.zeros([len(self), len(self)]) )
+	@ErrorCovariance.setter
+	def ErrorCovariance(self, P):
+		self.properties['ErrorCovariance'] = P
+	@ErrorCovariance.deleter
+	def ErrorCovariance(self):
+		del self.properties['ErrorCovariance']
+
+	@property 
+	def ProcessCovariance(self):
+		return self.properties.get('ProcessCovariance', None)
+	@ProcessCovariance.setter
+	def ProcessCovariance(self, Q):
+		self.properties['ProcessCovariance'] = Q
+	@ProcessCovariance.deleter
+	def ProcessCovariance(self):
+		del self.properties['ProcessCovariance']
+
+	@property 
+	def MeasurementCovariance(self):
+		return self.properties.get('MeasurementCovariance', None)
+	@MeasurementCovariance.setter
+	def MeasurementCovariance(self, R):
+		self.properties['MeasurementCovariance'] = R 
+	@MeasurementCovariance.deleter
+	def MeasurementCovariance(self):
+		del self.properties['MeasurementCovariance']
+
+	@property
+	def KalmanGain(self):
+		return self.properties.get('KalmanGain', np.matlib.zeros([len(self), len(self)]))
+	@KalmanGain.setter
+	def KalmanGain(self, K):
+		self.properties['KalmanGain'] = K 
+	@KalmanGain.deleter
+	def KalmanGain(self):
+		del self.properties['KalmanGain']
+
+class KalmanFilter(ExtendedKalmanFilter, object):
+	def __init__(self, **kwargs):
+		super(KalmanFilter, self).__init__()
+
+	def predict(self):
+		self.X += self.Ts * (self.ProcessJacobian * self.X )
+		self.predict_error()
+
+	def correct(self):
+		self.StateMap = self.MeasurementJacobian * self.X 
+		super(self).predict()
+
+class MagdwickFilter(BasicObject, object):
+	def __init__(self, **kwargs):
+		super(MagdwickFilter, self).__init__()
+		self.Beta = rospy.get_param('Magdwick/Beta', kwargs.get('Beta', 0.1) )
+
+ 	def correct(self):
+ 		F = np.mat(tf.transformations.quaternion_matrix( self.quaternion.get_quaternion() ).transpose()[0:3, 2] - self.sensors['accelerometer'].get_measurementvector()).transpose()
+
+		J = np.mat( [
+			[ -2*self.quaternion.y,	2*self.quaternion.z,    -2*self.quaternion.w,	2*self.quaternion.x ], 
+			[ 2*self.quaternion.x,     2*self.quaternion.w,     2*self.quaternion.z,	2*self.quaternion.y], 
+			[ 0,         -4*self.quaternion.x,    -4*self.quaternion.y,	0    ], 
+			]).transpose()
+
+
+		step = (np.dot(J, F))
+		step = step / linalg.norm(step)
+
+		self.X -= self.Ts*self.Beta * step
+		self.set_quaternion()
+
+	@property
+	def stateList(self):
+		return self.properties.get('stateList', list())
+	@stateList.setter
+	def stateList(self, new_list):
+		self.properties['stateList'] = new_list
+	@stateList.deleter
+	def stateList(self):
+		del self.properties['stateList']
+
+	@property
+	def X(self):
+		return self.properties.get('X', None)
+	@X.setter
+	def X(self, X):
+		self.properties['X'] = X
+	@X.deleter
+	def X(self):
+		del self.properties['X']
+
+	@property
+	def Ts(self):
+		return self.properties.get('Ts', 0.01)
+	@Ts.setter
+	def Ts(self, Ts):
+		self.properties['Ts'] = Ts
+	@Ts.deleter
+	def Ts(self):
+		del self.properties['Ts']
+
+	@property
+	def Beta(self):
+		return self.properties.get('Beta', 0.1)
+	@Beta.setter
+	def Beta(self, Beta):
+		self.properties['Beta'] = Beta
+	@Beta.deleter
+	def Beta(self):
+		del self.properties['Beta']
+
+class MahoneyFilter(BasicObject, object):
+	def __init__(self, **kwargs):
+		super(MahoneyFilter, self).__init__()
+
+		self.Kp = rospy.get_param('Mahoney/Kp', kwargs.get('Kp', 0.1) )
+		self.Ki = rospy.get_param('Mahoney/Ki', kwargs.get('Ki', 0.1) )
+
+		self.error = dict(
+			proportional = np.array([0., 0., 0.]).transpose(), 
+			integral = np.array([0., 0., 0.]).transpose() )
+
+
+	def correct(self):
+		v = tf.transformations.quaternion_matrix( self.quaternion.get_quaternion() ).transpose()[0:3, 2]
+		
+		self.error['proportional'] = np.cross( self.sensors['accelerometer'].get_measurementvector(), v)
+
+		self.error['integral'] += self.Ts * self.error['proportional']  
+
+		u = self.Kp * self.error['proportional']   + self.Ki * self.error['integral'];  
+
+		qdot = 0.5 * np.matrix([
+			np.roll( 
+				tf.transformations.quaternion_multiply( 
+					( self.quaternion.get_quaternion() ), 
+					(u[0], u[1], u[2], 0 ), 
+					), 1)
+			]).transpose()
+
+		self.X += self.Ts * qdot
+
+		self.set_quaternion()
+
+
+
+	@property
+	def stateList(self):
+		return self.properties.get('stateList', list())
+	@stateList.setter
+	def stateList(self, new_list):
+		self.properties['stateList'] = new_list
+	@stateList.deleter
+	def stateList(self):
+		del self.properties['stateList']
+
+	@property
+	def X(self):
+		return self.properties.get('X', None)
+	@X.setter
+	def X(self, X):
+		self.properties['X'] = X
+	@X.deleter
+	def X(self):
+		del self.properties['X']
+
+	@property
+	def Kp(self):
+		return self.properties.get('Kp', 0.1)
+	@Kp.setter
+	def Kp(self, Kp):
+		self.properties['Kp'] = Kp
+	@Kp.deleter
+	def Kp(self):
+		del self.properties['Kp']
+
+	@property
+	def Ki(self):
+		return self.properties.get('Ki', 0.1)
+	@Ki.setter
+	def Ki(self, Ki):
+		self.properties['Ki'] = Ki
+	@Ki.deleter
+	def Ki(self):
+		del self.properties['Ki']
+
+	@property
+	def Ki(self):
+		return self.properties.get('Ki', 0.1)
+	@Ki.setter
+	def Ki(self, Ki):
+		self.properties['Ki'] = Ki
+	@Ki.deleter
+	def Ki(self):
+		del self.properties['Ki']
+
+	@property
+	def error(self):
+		return self.properties.get('error', dict( ))
+	@error.setter
+	def error(self, error):
+		self.properties['error'] = error
+	@error.deleter
+	def error(self):
+		del self.properties['error']
 
 def main():
 	import h5py

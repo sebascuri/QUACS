@@ -55,32 +55,35 @@ class ROS_Handler(Quadrotor, ROS_Object, object):
 		self.name = kwargs.get('name', "/goal")
 		self.signal = []
 
-		self.subscriber = dict(
-			ardrone_state = rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata),
-			sonar_height = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
-			)
 
-		self.publisher = dict(
+		self.publisher.update(
 			land = rospy.Publisher('/ardrone/land', Empty, latch = True),
 			takeoff = rospy.Publisher('/ardrone/takeoff', Empty, latch = True),
 			reset = rospy.Publisher('/ardrone/reset', Empty, latch = True),
 			controller_state = rospy.Publisher('/ardrone/controller/state', KeyValue, latch = True),
 			cmd_vel = rospy.Publisher('/cmd_vel', Twist),
-			trajectory = rospy.Publisher('/ardrone/trajectory', Odometry)
+			trajectory = rospy.Publisher('/ardrone/trajectory', Odometry) )
+
+		self.subscriber.update(
+			ardrone_state = rospy.Subscriber('/ardrone/navdata', Navdata, callback = self.RecieveNavdata),
+			sonar_height = rospy.Subscriber('/sonar_height', Range, callback = self.ReceiveSonarHeight )
 			)
 
-		self.services = dict(
+		self.services.update(
 			signal_service = rospy.Service('/ardrone_control/Signal', Signal, self.Signal)
 			)
 		
-		self.tf_broadcaster = dict( 
+		self.tf_broadcaster.update( 
 			goal_tf = tf.TransformBroadcaster() 
 			)
 
-		self.timer = dict( 
+		self.timer.update(
 			trajectory_timer = rospy.Timer(rospy.Duration( self.Ts ), self.Talk, oneshot=False),
 			signal_timer = None
 			)
+
+
+		
 		
 	def RecieveNavdata( self, data ):
 		self.set_state(data.state)
@@ -261,7 +264,7 @@ class ROS_Handler(Quadrotor, ROS_Object, object):
 		print "Controller New State is:", new_state.key
 	
 def main():
-	rospy.init_node('StateHandler', anonymous = True)
+	#rospy.init_node('StateHandler', anonymous = True)
 	ros_handler = ROS_Handler(Command_Time = 1)
 	
 

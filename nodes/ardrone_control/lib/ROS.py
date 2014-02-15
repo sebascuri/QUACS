@@ -13,6 +13,11 @@ class ROS_Object(object):
 			self.properties = dict()
 
 		self.tfListener = tf.TransformListener()
+		self.publisher = dict()
+		self.subscriber = dict()
+		self.timer = dict()
+		self.services = dict()
+		self.tf_broadcaster = dict()
 
 	@property 
 	def timer(self):
@@ -26,7 +31,7 @@ class ROS_Object(object):
 
 	@property 
 	def subscriber(self):
-		return self.properties.get('subscriber', None)
+		return self.properties.get('subscriber',None)
 	@subscriber.setter 
 	def subscriber(self, subscriber):
 		self.properties['subscriber'] = subscriber

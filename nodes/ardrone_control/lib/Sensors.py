@@ -1,13 +1,27 @@
-#!/users/sebastiancuri/anaconda/bin/python
 #!/usr/bin/env python
 
 from math import pi, cos, sin, sqrt, atan2, asin
 import numpy as np 
 import numpy.matlib as matlib
+
 import utm
+
+
 # import gps_transforms
 
 from BasicObject import BasicObject, SixDofObject, Quaternion
+from Filter import ExtendedKalmanFilter, MagdwickFilter, MahoneyFilter
+
+from ROS import ROS_Object
+
+try:
+	import tf;
+except ImportError:
+	import roslib; roslib.load_manifest('ardrone_control')
+	import rospy
+	import tf;
+
+
 
 class Sensor(BasicObject, object):
 	"""docstring for Sensor
@@ -29,9 +43,9 @@ class Sensor(BasicObject, object):
 
 	"""
 	def __init__(self, **kwargs):
-		# super(Sensor, self).__init__( **kwargs )
+		super(Sensor, self).__init__( **kwargs )
 
-		self.properties = dict( measurementList = kwargs.get('measurementList', list() ),
+		self.properties.update( measurementList = kwargs.get('measurementList', list() ),
 			stateList = kwargs.get('stateList', list() ) )
 
 		for attribute in self.measurementList:
@@ -44,14 +58,14 @@ class Sensor(BasicObject, object):
 		self.properties.update(
 			Z = kwargs.get('Z', matlib.zeros( [len(self), 1] )),
 			StateMap = kwargs.get('StateMap', matlib.zeros( [len(self) , 1] )),
-			Jacobian = kwargs.get('Jacobian', matlib.eye( len(self) ) ),
-			Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) )),
+			MeasurementJacobian = kwargs.get('MeasurementJacobian', matlib.eye( len(self) ) ),
+			MeasurementCovariance = kwargs.get('MeasurementCovariance', 0.3 * matlib.eye( len(self) )),
 			)
 
 		# self.Z = kwargs.get('Z', matlib.zeros( [len(self), 1] ))
 		# self.StateMap = kwargs.get('StateMap', matlib.zeros( [len(self) , 1] ))
-		# self.Jacobian = kwargs.get('Jacobian', matlib.eye( len(self) ) )
-		# self.Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ))
+		# self.MeasurementJacobian = kwargs.get('MeasurementJacobian', matlib.eye( len(self) ) )
+		# self.MeasurementCovariance = kwargs.get('MeasurementCovariance', 0.3 * matlib.eye( len(self) ))
 
 		self.set_Z()
 		
@@ -87,15 +101,36 @@ class Sensor(BasicObject, object):
 					self.StateMap[ self.stateList.index(name) ] = value
 		"""
 
+	def get_state(self):
+		state_dict = dict( )
+		for key in self.stateList:
+			attribute = key.split('.')[1]
+			state_dict[attribute] = getattr(self, attribute)
+		return state_dict
+
+	def get_measurement(self):
+		measure_dict = dict( )
+		for key in self.properties.keys():
+			if key in self.measurementList:
+				measure_dict[key] = getattr(self, key)
+
+		return measure_dict
+
+	def get_measurementvector(self):
+		l = []
+		for measure in self.measurementList:
+			l.append(getattr(self, measure))
+		return np.array(l).transpose()
+
 	def get_measurementList(self):
 
 		return self.measurementList
 
 	def set_Z(self):
 		i = 0
-		for key in self.stateList:
-			attribute = key.split('.')[1]
-			self.Z[i] = getattr(self, attribute)
+		for key in self.measurementList:
+			# attribute = key.split('.')[1]
+			self.Z[i] = getattr(self, key)
 			i += 1
 
 	@property 
@@ -137,24 +172,24 @@ class Sensor(BasicObject, object):
 		del self.properties['StateMap']
 
 	@property
-	def Jacobian(self):
-		return self.properties.get('Jacobian', matlib.eye( len(self) ) )
-	@Jacobian.setter
-	def Jacobian(self, H):
-		self.properties['Jacobian'] = H
-	@Jacobian.deleter
-	def Jacobian(self):
-		del self.properties['Jacobian']	
+	def MeasurementJacobian(self):
+		return self.properties.get('MeasurementJacobian', matlib.eye( len(self) ) )
+	@MeasurementJacobian.setter
+	def MeasurementJacobian(self, H):
+		self.properties['MeasurementJacobian'] = H
+	@MeasurementJacobian.deleter
+	def MeasurementJacobian(self):
+		del self.properties['MeasurementJacobian']	
 
 	@property
-	def Covariance(self):
-		return self.properties.get('Covariance', 0.3 * matlib.eye( len(self) ) )
-	@Covariance.setter
-	def Covariance(self, R):
-		self.properties['Covariance'] = R
-	@Covariance.deleter
-	def Covariance(self):
-		del self.properties['Covariance']
+	def MeasurementCovariance(self):
+		return self.properties.get('MeasurementCovariance', 0.3 * matlib.eye( len(self) ) )
+	@MeasurementCovariance.setter
+	def MeasurementCovariance(self, R):
+		self.properties['MeasurementCovariance'] = R
+	@MeasurementCovariance.deleter
+	def MeasurementCovariance(self):
+		del self.properties['MeasurementCovariance']
 
 	@property 
 	def stateList(self):
@@ -186,7 +221,18 @@ class DummyYaw(Sensor, object):
 	def __init__(self, **kwargs):
 		super(DummyYaw, self).__init__(stateList = DummyYaw.stateList, measurementList = DummyYaw.measurementList, **kwargs)
 
-		self.Covariance = matlib.zeros( (len(self), len(self)) )
+		self.MeasurementCovariance = matlib.zeros( (len(self), len(self)) )
+
+		# self.x = 0
+		# self.y = 0
+		# self.z = 0
+		# self.w = 1 
+
+	def measure(self, imu_raw):
+		q = imu_raw.orientation
+		euler = tf.transformations.euler_from_quaternion( (q.x, q.y, q.z, q.w), axes = 'sxyz' )
+
+		super(DummyYaw, self).measure(yaw = euler[2] )
 
 	@property 
 	def yaw(self):
@@ -198,7 +244,7 @@ class DummyYaw(Sensor, object):
 	def yaw(self):
 		del self.properties['yaw']
 
-class GPS(Sensor, object):
+class GPS(Sensor, ROS_Object, object):
 	"""docstring for GPS 
 	x is easting
 	y is northing
@@ -206,74 +252,93 @@ class GPS(Sensor, object):
 
 	the gps_zero['yaw'] is a rotation around Z between northing, easting to global xyz.
 	"""
+	from geometry_msgs.msg import Vector3Stamped; global Vector3Stamped
+	import tf; global tf 
 	measurementList = ['latitude', 'longitude', 'altitude']
 	stateList = ['position.x', 'position.y', 'position.z']
 	def __init__(self, **kwargs):
 		super(GPS, self).__init__(stateList = GPS.stateList, measurementList = GPS.measurementList, **kwargs)
 		
-		self.Covariance= 0.4 * matlib.eye( len(self.measurementList) )
+		self.MeasurementCovariance= 0.4 * matlib.eye( len(self.measurementList) )
 
 		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
 
-		self.gps_zero = dict( x = easting, y = northing, z = self.altitude, yaw = 0)
+		self.gps_zero = dict( x = easting, y = northing, z = self.altitude, yaw = pi/2)
 
-		self.calibrated = False 
+		self.tf_broadcaster = dict( 
+			enu_gps = tf.TransformBroadcaster(), 
+			global_gps = tf.TransformBroadcaster()
+			)
 
-	def set_zero(self, *args, **kwargs):
-		if (len(args) is 0) and (len(kwargs) is 0):
-			i = 0;
-			for key in self.measurementList:
-				self.gps_zero[ key ] = self.Z.item(i)
-				i += 1
-		else:
-			if ( len(args) is 1 ) and ( type(args[0]) == type(dict()) ) :
-				set_zero( **args[0] )
-			elif len(args) == 3:
-				i = 0
-				for key in self.measurementList:
-					self.gps_zero[ key ] = args[i] 
-					i += 1
-			else:
-				for key, value in kwargs.items():
-					self.gps_zero[ key ] = value
+		print self.tfListener
+		
+		self.Broadcast()
 
-	def measure(self, *args, **kwargs):
-		# get values
-		if len(args) == 2: # only latitude and longitude
-			self.altitude = utm.conversion.R 
-			self.latitude = args[0]
-			self.longitude = args[1]
-		elif len(args) == 3: # latitude, longitude and altitude, ordered
-			i = 0
-			for attribute in self.measurementList:
-				setattr(self, attribute, args[i])
-				i += 1
 
-		elif len(args) == 1:
-			arg = args[0]
-			if type(arg) == dict():
-				self.measure(**args[0])
-			else: # latitude, longitude and altitude, ordered inside a list or tuple
-				i = 0 
-				for attribute in self.measurementList:
-					setattr(self, attribute, arg[i])
-					i += 1
+	def set_zero(self, fix_zero):
+		easting, northing, number, letter = utm.from_latlon( fix_zero.latitude, fix_zero.longitude )
 
-		for key, value in kwargs.items():
-			if key in self.measurementList:
-				setattr(self, key, value)
+		self.gps_zero['x'] = easting
+		self.gps_zero['y'] = northing 
+		self.gps_zero['z'] = fix_zero.altitude
+	
+	def set_zero_yaw(self, yaw):
+		self.gps_zero['yaw'] = yaw  
+
+	def measure(self, fix_data):
+		# set measurements 
+		for key in self.measurementList:
+			setattr(self, key, getattr(fix_data, key) )
 
 		# transform latitude longitude to easting, northing
 		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
 
+		enu = Vector3Stamped( )
+		enu.vector.x = easting - self.gps_zero['x']
+		enu.vector.y = northing - self.gps_zero['y']
+		enu.vector.z = fix_data.altitude - self.gps_zero['z']
+		enu.header.frame_id = "/enu_gps"
+
+
+		
+		try:
+			global_gps = self.tfListener.transformVector3("/global_gps", enu)
+			super(GPS, self).measure(
+				x = global_gps.vector.x, 
+				y = global_gps.vector.y, 
+				z = global_gps.vector.z
+			)
+		except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+			super(GPS, self).measure(
+				x = enu.vector.x, 
+				y = enu.vector.y, 
+				z = enu.vector.z
+			) 
+
 		# set attributes and Z vector
-		super(GPS, self).measure(x = easting - self.gps_zero['x'], 
-			y = northing - self.gps_zero['y'], 
-			z = self.altitude - self.gps_zero['z'] )
+		
+
+	def Broadcast(self):
+		# print "Broadcasting"
+		time = rospy.Time.now()
+
+		self.tf_broadcaster['global_gps'].sendTransform( (self.x, self.y, self.z ), 
+			tf.transformations.quaternion_from_euler(0, 0, self.gps_zero['yaw']), 
+			time,
+			"/global_gps",
+			"/nav"
+			)
+
+		self.tf_broadcaster['enu_gps'].sendTransform( (self.x, self.y, self.z ), 
+			tf.transformations.quaternion_from_euler(0, 0, 0), 
+			time,
+			"/enu_gps",
+			"/nav"
+			)
 
 	@property 
 	def latitude(self):
-		return self.properties.get('latitude', list())
+		return self.properties.get('latitude', 0.0 )
 	@latitude.setter 
 	def latitude(self, latitude):
 		self.properties['latitude'] = latitude
@@ -283,7 +348,7 @@ class GPS(Sensor, object):
 
 	@property 	
 	def longitude(self):
-		return self.properties.get('longitude', list())
+		return self.properties.get('longitude', 0.0)
 	@longitude.setter 
 	def longitude(self, longitude):
 		self.properties['longitude'] = longitude
@@ -293,7 +358,7 @@ class GPS(Sensor, object):
 
 	@property 
 	def altitude(self):
-		return self.properties.get('altitude', list())
+		return self.properties.get('altitude', utm.conversion.R )
 	@altitude.setter 
 	def altitude(self, altitude):
 		self.properties['altitude'] = altitude
@@ -340,11 +405,27 @@ class Gyroscope(Sensor, object):
 	"""docstring for Gyroscope
 	Reads roll, pitch and yaw velocities as input as assing them to outputs. 
 	"""
-	['roll', 'pitch', 'yaw']
-	['velocity.roll', 'velocity.pitch', 'velocity.yaw']
+	measurementList = ['roll', 'pitch', 'yaw']
+	stateList = ['velocity.roll', 'velocity.pitch', 'velocity.yaw']
+	Angles_MAP = dict(
+		roll = 'x',
+		pitch = 'y',
+		yaw = 'z' 
+		)
 	def __init__(self, roll = 0, pitch = 0, yaw = 0, **kwargs):
 		super(Gyroscope, self).__init__(stateList = Gyroscope.stateList, measurementList = Gyroscope.measurementList, **kwargs)
-		self.Covariance= 0.4 * matlib.eye( len(self.measurementList) )
+		self.MeasurementCovariance= 0.4 * matlib.eye( len(self.measurementList) )
+
+	def measure(self, imu_raw):
+		for measure in self.measurementList:
+			setattr(self, measure, getattr(imu_raw.angular_velocity, self.Angles_MAP[measure] ) )
+
+		self.set_Z()
+
+	def get_quaternion(self):
+		return (self.roll, self.pitch, self.yaw, 0)
+
+
 
 	@property 
 	def yaw(self):
@@ -385,31 +466,17 @@ class Accelerometer(Sensor, object):
 	def __init__(self, **kwargs):
 		super(Accelerometer, self).__init__(stateList = Accelerometer.stateList, measurementList = Accelerometer.measurementList, **kwargs)
 
-	def measure(self, *args, **kwargs):
-		for key, value in kwargs.items():
-			if key in self.measurementList:
-				setattr(self, key, value)
+	def measure(self, imu_raw):
+		for measure in self.measurementList:
+			setattr(self, measure, getattr(imu_raw.linear_acceleration, measure[1] ) ) 
 
-		if len(args) == 1: 
-			if type(arg) == dict():
-				self.measure(**args[0])
-			else: # ax, ay, az, ordered inside a list or tuple
-				i = 0 
-				for attribute in self.measurementList:
-					setattr(self, attribute, arg[i])
-					i += 1
-		elif len(args) == 3: # ax, ay, az, ordered
-			i = 0
-			for attribute in self.measurementList:
-				setattr(self, attribute, args[i])
-				i += 1
+		g = sqrt(self.ax**2 + self.ay**2 + self.az**2)
+		self.roll = atan2(-self.ax, self.az)
+		self.pitch = -asin(self.ay/g)
 
-		if self.az < 0:
-			self.roll = atan2(- self.ay, -self.az )
-			self.pitch = asin( self.ax / sqrt(self.ax ** 2 + self.ay ** 2 + self.az ** 2) )
-		else:
-			self.roll = atan2(self.ay, self.az)
-			self.pitch = asin( -self.ax / sqrt(self.ax ** 2 + self.ay ** 2 + self.az ** 2) )
+		self.set_Z()
+
+
 
 	@property 
 	def pitch(self):
@@ -569,19 +636,95 @@ class Magnetomer(Sensor, object):
 	def roll(self):
 		del self.properties['roll']
 
+class RangeSensor(BasicObject, object):
+	"""docstring for RangeSensor"""
+	def __init__(self, **kwargs):
+		super(RangeSensor, self).__init__()
+		self.max_range = kwargs.get('max_range', 3000.0)
+		self.min_range = kwargs.get('min_range', 0.0)
+		self.range = kwargs.get('range', 0.0)
+
+		self.min_safe = kwargs.get('min_safe', None)
+
+
+	def measure(self, range_data):
+		for key in self.properties.keys():
+			setattr(self, key, getattr(range_data, key) )
+
+	def isFar(self):
+		return self.range >= self.max_range 
+
+	def isNear(self):
+		return self.range <= self.min_range or self.range <= self.min_safe 
+
+
+	@property 
+	def range(self):
+		return self.properties.get('range', None)
+	@range.setter 
+	def range(self, new_range):
+		self.properties['range'] = new_range
+	@range.deleter
+	def range(self):
+		del self.properties['range']
+
+	@property 
+	def max_range(self):
+		return self.properties.get('max_range', None)
+	@max_range.setter 
+	def max_range(self, max_range):
+		self.properties['max_range'] = max_range
+	@max_range.deleter
+	def max_range(self):
+		del self.properties['max_range']
+
+	@property 
+	def min_range(self):
+		return self.properties.get('min_range', None)
+	@min_range.setter 
+	def min_range(self, min_range):
+		self.properties['min_range'] = min_range
+	@min_range.deleter
+	def min_range(self):
+		del self.properties['min_range']
+
+class IMU(BasicObject, object):
+	"""docstring for IMU"""
+	measurementList = ['roll', 'pitch', 'yaw']
+	def __init__(self, **kwargs):
+		super(IMU, self).__init__(**kwargs)
+		self.sensors = dict(
+			dummy_yaw = DummyYaw(), 
+			gyroscope = Gyroscope(),
+			accelerometer = Accelerometer()
+			)
+
+	def measure(self, imu_raw):
+		for sensor in self.sensors.values():
+			sensor.measure(imu_raw)
+
+	@property 
+	def sensors(self):
+		return self.properties.get('sensors', None)
+	@sensors.setter 
+	def sensors(self, sensors):
+		self.properties['sensors'] = sensors
+	@sensors.deleter
+	def sensors(self):
+		del self.properties['sensors']
 
 def yaw_test():
 	yaw_sensor = DummyYaw(yaw = pi/2 )
 	print yaw_sensor.yaw 
 	print yaw_sensor.Z 
 	print yaw_sensor.StateMap
-	print yaw_sensor.Covariance
+	print yaw_sensor.MeasurementCovariance
 
 	yaw_sensor.map(yaw = 1.56)
 	yaw_sensor.measure(yaw = 1.57)
 	print yaw_sensor.Z 
 	print yaw_sensor.StateMap
-	print yaw_sensor.Jacobian
+	print yaw_sensor.MeasurementJacobian
 
 def gps2_test():
 
@@ -611,7 +754,7 @@ def gps2_test():
 
 
 	print gps.Z
-	print gps.Jacobian
+	print gps.MeasurementJacobian
 
 	print 'Z', gps.Z
 	print 'R', gps.Residual
@@ -629,39 +772,132 @@ def gps2_test():
 	"""
 
 def gps():
-	gps = GPS(latitude = 45, altitude = utm.conversion.R, longitude = 20) 
-
-	print gps.get_properties()
-
-	print gps.x, gps.y, gps.z 
-	gps.measure( latitude = 45, altitude = utm.conversion.R + 1., longitude = 20)
-	print gps.x, gps.y, gps.z  
-	gps.measure( latitude = 44, altitude = utm.conversion.R, longitude = 20)
-	print gps.x, gps.y, gps.z 
-	print (gps.x**2 + gps.y**2 )**0.5
-	print gps.Z 
-
-
-	gps.measure( latitude = 45, altitude = utm.conversion.R, longitude = 21)
-	print gps.x, gps.y, gps.z 
-	print (gps.x**2 + gps.y**2 )**0.5
-	print gps.Z 
-	# gps.measure(latitude = 45 * pi/180.0, altitude = 1, longitude = 20* pi/180.0)
+	import roslib; roslib.load_manifest('ardrone_control')
+	import rospy;  global rospy 
 	
-	print gps.Jacobian
-	print gps.Covariance
+	
 
-	gps.map(x = 1, y = 2, z = 3)
+	from sensor_msgs.msg import NavSatFix
+	
+	
+	rospy.init_node('test')
 
-	print gps.StateMap
+	gps = GPS() 
+	#print gps 
 
-	print gps.get_properties()
+	m = NavSatFix()
+	m.latitude = 45.0
+	m.altitude = utm.conversion.R
+	m.longitude = 20.0
 
+	gps.set_zero(m) 
+
+	gps.measure(m)
+	print gps.get_state()
+	print gps.Z 
+
+	m.latitude = 45.1
+	m.altitude = utm.conversion.R
+	m.longitude = 20.0
+
+	gps.measure(m)
+	print gps.get_state()
+	print gps.Z 
+
+	gps.set_zero_yaw( 30 * pi/180 )
+	gps.measure(m)
+	print gps.get_state()
+	print gps.get_measurement()
+	print gps.Z 
+
+	for i in range(10000):
+		gps.measure(m)
+		gps.Broadcast()
+
+	rospy.spin()
+
+def range_test():
+	from sensor_msgs.msg import Range 
+	sensor = RangeSensor()
+	print sensor
+
+	m = Range()
+	m.range = 2000.0
+	m.max_range = 3000.0
+	m.min_range = 2.01
+
+	sensor.min_safe = 500
+
+	sensor.measure(m)
+
+	print sensor 
+	print sensor.isNear()
+	print sensor.isFar()
+
+	m.range = 4000
+	sensor.measure(m)
+	print sensor 
+	print sensor.isNear()
+	print sensor.isFar()
+
+	m.range = -2000
+	sensor.measure(m)
+	print sensor 
+	print sensor.isNear()
+	print sensor.isFar()
+
+	m.range = 300
+	sensor.measure(m)
+	print sensor 
+	print sensor.isNear()
+	print sensor.isFar()
+
+def imu_test():
+	g = 9.81
+	from sensor_msgs.msg import Imu
+
+	import roslib; roslib.load_manifest('ardrone_control')
+	import rospy;  global rospy 
+	import tf; global tf;
+	# sensor = IMU()
+
+	msg = Imu()
+	msg.angular_velocity.z = 1.0
+	msg.linear_acceleration.z = -9.81
+	msg.linear_acceleration.x = -0.01
+	msg.orientation.z = 1/sqrt(2)
+	msg.orientation.w = 1/sqrt(2)
+	# msg.linear_acceleration.z = g 
+	# sensor.measure(msg)
+	
+	# for sensor in sensor.sensors.values():
+	# 	print sensor.properties
+	sensor = IMU()
+	#sensor = IMU_Mahoney( Ts = 0.01)
+	#sensor = IMU_Magdwick( Ts = 0.01)
+	sensor.measure(msg)
+	print sensor.sensors['accelerometer']
+	print sensor.sensors['gyroscope']
+	print sensor.sensors['dummy_yaw']
+	# print sensor.X 
+	# sensor.predict()
+	# sensor.predict()
+	# sensor.predict()
+	# sensor.predict()
+	# print sensor.X 
+
+	# sensor.correct()
+
+	# print sensor.get_quaternion()
+	# print sensor.get_eulers()
 
 def main():
+	
 	#gps_test()
-	yaw_test()
-	gps()
+	#yaw_test()
+	# gps()
+	#range_test()
+	imu_test()
 
 	
 if __name__ == '__main__': main()

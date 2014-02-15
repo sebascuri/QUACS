@@ -13,15 +13,15 @@
 
 	<!-- Load PID parameters -->
 	<rosparam file="$(find ardrone_control)/parameters/PID_Parameters.yaml" command="load" />
+	<!-- Load Filter parameters -->
+	<rosparam file="$(find ardrone_control)/parameters/Filter_Parameters.yaml" command="load" />
 	
 	<!-- rosrun ardrone_control pkg-->
 	<group ns="Control">
 		<!-- rosrun Estimator -->
-		<node name="Estimator" pkg="ardrone_control" type="FilteredOdometry.py" respawn="false" output="screen" />
+		<node name="Estimator" pkg="ardrone_control" type="FilteredOdometry.py" respawn="false" output="screen" />	
 		<!-- rosrun Controller -->
 		<node name="Controller" pkg="ardrone_control" type="ROS_PIDController.py" respawn="false" output="screen" />
-			<!-- Load PID parameters -->
-			<rosparam file="$(find ardrone_control)/parameters/PID_Parameters.yaml" command="load" />
 		<!-- rosrun StateHandling -->
 		<node name="StateHandler" pkg="ardrone_control" type="keyboardControl.py" respawn="false" output="screen" />
 	</group>
