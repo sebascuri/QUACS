@@ -5,6 +5,7 @@ import numpy as np
 import numpy.matlib as matlib
 
 import utm
+import rospy;
 
 
 # import gps_transforms
@@ -18,7 +19,6 @@ try:
 	import tf;
 except ImportError:
 	import roslib; roslib.load_manifest('ardrone_control')
-	import rospy
 	import tf;
 
 
@@ -269,10 +269,10 @@ class GPS(Sensor, ROS_Object, object):
 			enu_gps = tf.TransformBroadcaster(), 
 			global_gps = tf.TransformBroadcaster()
 			)
-
-		print self.tfListener
 		
 		self.Broadcast()
+
+		self.calibrated = False
 
 
 	def set_zero(self, fix_zero):
@@ -315,6 +315,8 @@ class GPS(Sensor, ROS_Object, object):
 				z = enu.vector.z
 			) 
 
+
+		self.Broadcast()
 		# set attributes and Z vector
 		
 
