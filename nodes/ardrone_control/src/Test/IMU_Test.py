@@ -21,10 +21,10 @@ class ROS_IMU(ROS_Object, object):
 		super(ROS_IMU, self).__init__()
 		Kp = rospy.get_param('Mahoney/Kp')
 		print Kp
-		vz = rospy.get_param('vz')
-		print type(vz['a'])
+
 
 		self.imu = IMU_Mahoney(Ts = 0.01)
+		self.a = self.imu.quaternion
 
 		# self.imu = IMU_Magdwick( Ts = 0.01 )
 		# self.imu = IMU_Mahoney( Ts = 0.01 )
@@ -42,6 +42,8 @@ class ROS_IMU(ROS_Object, object):
 		self.imu.correct()
 
 		self.Talk()
+
+		#print self.a.z, self.imu.quaternion.z
 
 	def Talk( self ):
 		msg = Odometry()

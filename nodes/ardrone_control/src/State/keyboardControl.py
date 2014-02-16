@@ -33,7 +33,7 @@ class KeyboardController(ROS_Handler, QtGui.QMainWindow, object):
 		X 					= [ QtCore.Qt.Key_Down, QtCore.Qt.Key_Up ],
 		Y 					= [ QtCore.Qt.Key_Right, QtCore.Qt.Key_Left ],
 		Z 					= [ QtCore.Qt.Key_S, QtCore.Qt.Key_W ],
-		Yaw 				= [ QtCore.Qt.Key_A, QtCore.Qt.Key_D ],
+		Yaw 				= [ QtCore.Qt.Key_D, QtCore.Qt.Key_A ],
 		TakeOff          	= [ QtCore.Qt.Key_Return ],
 		Land             	= [ QtCore.Qt.Key_Backspace ],
 		Reset        		= [ QtCore.Qt.Key_Space ],

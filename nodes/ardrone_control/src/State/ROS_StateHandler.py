@@ -51,7 +51,7 @@ class ROS_Handler(Quadrotor, ROS_Object, object):
 		super(ROS_Handler, self).__init__()
 
 		# self.quadrotor = Quadrotor()
-		self.Ts = kwargs.get('Command_Time', 1)
+		self.Ts = kwargs.get('Command_Time', Command_Time)
 		self.name = kwargs.get('name', "/goal")
 		self.signal = []
 

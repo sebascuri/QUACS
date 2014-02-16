@@ -26,9 +26,18 @@ class Quadrotor(BasicObject, object):
 			state = kwargs.get('state', ArDroneState()) ,
 			motors = kwargs.get('motors', [Motor(), Motor(), Motor(), Motor()] )  ,
 			processes = kwargs.get('processes', list() ),
-			sensors = kwargs.get('sensors', list() ), 
-			imu = kwargs.get('imu', None )
+			sensors = kwargs.get('sensors', dict() ), 
 			)
+
+		if 'imu' in self.sensors.keys():
+			self.orientation = self.sensors['imu'].quaternion # gets orientation from IMU filter
+
+		"""
+		if 'gps' in self.sensors.keys():
+			self.position.x = self.sensors['gps'].position.x 
+			self.position.y = self.sensors['gps'].position.y 
+		"""
+
 
 
 	def predict( self ):
@@ -130,16 +139,6 @@ class Quadrotor(BasicObject, object):
 	@motors.deleter
 	def motors(self):
 		del self.properties['motors']	
-
-	@property
-	def imu(self):
-		return self.properties.get('imu', None)
-	@imu.setter
-	def imu(self, imu):
-		self.properties['imu'] = imu
-	@imu.deleter
-	def imu(self):
-		del self.properties['imu']
 
 	@property
 	def processes(self):

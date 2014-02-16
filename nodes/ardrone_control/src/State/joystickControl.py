@@ -46,8 +46,12 @@ class JoystickController(ROS_Handler, object):
 	def RecieveJoy(self, data):
 		for command, message_data in self.MAP.items(): 
 			for key, index in message_data.items(): 
-				if getattr(data, key)[index]: 
-					getattr(self, command)( getattr(data, key)[index] )
+				try:
+					if getattr(data, key)[index]: 
+						getattr(self, command)( getattr(data, key)[index] )
+				except IndexError:
+					print "Please check MAP dictionary in src/State/joystickControl.py"
+					print "No button to %s in actual joystick "%command
 
 		
 def main():  

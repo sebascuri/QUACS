@@ -55,23 +55,25 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
             )
 
         self.tf_broadcaster.update( 
-            local_tf = tf.TransformBroadcaster()
+            drone_global_tf = tf.TransformBroadcaster( ), 
+            drone_local_tf = tf.TransformBroadcaster( )
             )
 
         self.timer.update( 
             publish_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Command, oneshot=False)
             )
 
+
+
     def Command(self, time):
         self.Talk()
         self.predict()
 
     def Talk(self):
-        msgs = Odometry()
+        msgs = Odometry( )
         msgs.header.stamp = rospy.Time.now()
         msgs.header.frame_id = "/nav"
-        msgs.child_frame_id = self.name 
-
+        msgs.child_frame_id = "/drone_global"
 
         msgs.pose.pose.position.x = self.position.x
         msgs.pose.pose.position.y = self.position.y
@@ -80,7 +82,7 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
         msgs.pose.pose.orientation.x = self.orientation.x
         msgs.pose.pose.orientation.y = self.orientation.y
         msgs.pose.pose.orientation.z = self.orientation.z
-        msgs.pose.pose.orientation.w = self.orientation.w 
+        msgs.pose.pose.orientation.w = self.orientation.w
         
         msgs.twist.twist.linear.x = self.velocity.x
         msgs.twist.twist.linear.y = self.velocity.y
@@ -90,14 +92,25 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
         
         self.publisher['state'].publish(msgs)
 
-        self.tf_broadcaster['local_tf'].sendTransform( (msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
-            (msgs.pose.pose.orientation.x, msgs.pose.pose.orientation.y, msgs.pose.pose.orientation.z, msgs.pose.pose.orientation.w), 
+        self.tf_broadcaster['drone_global_tf'].sendTransform( (msgs.pose.pose.position.x, msgs.pose.pose.position.y, msgs.pose.pose.position.z) , 
+            (0, 0, 0, 1), 
             msgs.header.stamp, 
             msgs.child_frame_id, 
             msgs.header.frame_id)
 
+
+        msgs.header.frame_id = "/drone_global"
+        msgs.child_frame_id = "/drone_local"
+
+        # tf.transformations.quaternion_inverse(self.orientation.get_quaternion( ) )
+        self.tf_broadcaster['drone_local_tf'].sendTransform( (0, 0, 0) , 
+            self.orientation.get_quaternion( ), 
+            msgs.header.stamp,
+            msgs.child_frame_id, 
+            msgs.header.frame_id)
+
     def ReceiveNavdata(self, navdata):
-        self.position.set_properties(dict(roll = navdata.rotX * pi/180.0, pitch = navdata.rotY * pi/180.0, yaw = navdata.rotZ * pi/180.0))
+        # self.position.set_properties(dict(roll = navdata.rotX * pi/180.0, pitch = navdata.rotY * pi/180.0, yaw = navdata.rotZ * pi/180.0))
         self.velocity.set_properties(dict(x = navdata.vx / 1000.0, y = navdata.vy / 1000.0, z = navdata.vz / 1000.0))
         self.acceleration.set_properties(dict(x = navdata.ax * g, y = navdata.ay * g, z = (navdata.az - 1.0) * g ))
         # self.orientation.set_euler(roll = navdata.rotX * pi/180.0 , pitch = navdata.rotY * pi/180.0 , yaw = navdata.rotZ * pi/180.0  )
@@ -109,12 +122,15 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
         pass
 
     def ReceiveImu(self, imu_raw):
-        self.imu.measure(imu_raw)
-        self.imu.predict()
-        self.imu.correct()
+        try:
+            self.sensors['imu'].measure(imu_raw)
+            self.sensors['imu'].predict()
+            self.sensors['imu'].correct()
 
-        self.orientation = self.imu.quaternion
-        self.position.set_properties( self.imu.quaternion.get_euler( ) ) #set euler angles from filter
+            # self.orientation = self.imu.quaternion
+            self.position.set_properties( self.orientation.get_euler( ) ) #set euler angles from filter
+        except KeyError:
+            print "No IMU"
 
     def ReceiveSonarHeight(self, Range):
         """ Receive Sonar Heigh proximity msgs"""
@@ -123,7 +139,7 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
 
 def main():
     rospy.init_node('SensorFusion_Odometry', anonymous = True)
-    node = ROS_SensorFusion( imu = SensorFusion.IMU_Magdwick(Ts = 0.01), processes = [Process.XY_Odometry1( Ts = Command_Time ) , Process.Z_Odometry1( Ts = Command_Time )] )
+    node = ROS_SensorFusion( sensors = dict( imu = SensorFusion.IMU_Magdwick(Ts = 0.01) ), processes = [Process.XY_Odometry1( Ts = Command_Time ) , Process.Z_Odometry1( Ts = Command_Time )] )
     rospy.spin()
 
     

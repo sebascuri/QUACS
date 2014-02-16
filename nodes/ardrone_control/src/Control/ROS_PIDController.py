@@ -7,7 +7,7 @@ import rospy
 # Import the messages we're interested in sending and receiving
 from sensor_msgs.msg import Imu, Range
 from nav_msgs.msg import Odometry 
-from geometry_msgs.msg import Twist # for trajectory and space Estimation
+from geometry_msgs.msg import Twist, PoseStamped, PointStamped, Vector3Stamped # for trajectory and space Estimation
 from std_msgs.msg import Empty
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from diagnostic_msgs.msg import KeyValue # added for State Handling
@@ -119,7 +119,15 @@ class ROS_Handler(DroneController, ROS_Object, object):
 		# self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
 	def RecieveOdometry( self, data , method):
-		# MISSING: changed data from global to local coordinates
+
+		point_data = Vector3Stamped()
+		point_data.header.frame_id = data.header.frame_id
+		point_data.vector = data.pose.pose.position 
+
+		data.pose.pose.position = self.tfListener.transformVector3("/drone_local", point_data).vector
+
+
+
 		for key in self.position_control.keys():
 			getattr(self.position_control[key], method)( position = getattr(data.pose.pose.position, key), velocity = getattr(data.twist.twist.linear, key ) )
 
@@ -140,11 +148,10 @@ class ROS_Handler(DroneController, ROS_Object, object):
 			for key in self.orientation_control.keys( ):
 				setattr(twist.angular, key, self.orientation_control[key].get_output( ))
 
-
-			aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
-			aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
-			twist.linear.x = aux_x
-			twist.linear.y = aux_y
+			# aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
+			# aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
+			# twist.linear.x = aux_x
+			# twist.linear.y = aux_y
 			self.publisher['command_velocity'].publish(twist)
 
 	def RecieveState(self, data):
