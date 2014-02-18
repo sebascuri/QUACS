@@ -66,7 +66,8 @@ class SixDofObject(BasicObject, object):
 	"""docstring for SixDofObject:
 	This object has properties for each of the 6 degrees of freedom"""
 	def __init__(self, **kwargs):
-		self.properties = dict( 
+		super(SixDofObject, self).__init__()
+		self.properties.update( 
 			x = kwargs.get('x', 0.0), 
 			y = kwargs.get('y', 0.0),
 			z = kwargs.get('z', 0.0),
@@ -155,8 +156,8 @@ class Quaternion(BasicObject, object):
 	Has a method that from input euler angles it assigns the quaternion
 	"""
 	def __init__(self, **kwargs):
-		# super(Quaternion, self).__init__(**kwargs)
-		self.properties = dict( 
+		super(Quaternion, self).__init__(**kwargs)
+		self.properties.update( 
 			x = kwargs.get('x', 0.0), 
 			y = kwargs.get('y', 0.0), 
 			z = kwargs.get('z', 0.0), 
@@ -265,8 +266,8 @@ class State(BasicObject, object):
 	Object that can take a MAP of states and handles key and name interaction
 	"""
 	def __init__(self, state = 0):
-		# super(State, self).__init__()
-		self.properties = dict( state = state)
+		super(State, self).__init__()
+		self.properties.update( state = state)
 		self.set_state(state)
 		
 	def __str__(self):
@@ -334,8 +335,8 @@ class Motor(BasicObject, object):
 	Simple object to read pwm of each motor. 
 	"""
 	def __init__(self, **kwargs):
-
-		self.properties = dict( pwm = kwargs.get('pwm', 0) )
+		super(Motor, self).__init__()
+		self.properties.update( pwm = kwargs.get('pwm', 0) )
 
 	def __str__(self):
 

@@ -265,7 +265,7 @@ class GPS(Sensor, ROS_Object, object):
 
 		self.gps_zero = dict( x = easting, y = northing, z = self.altitude, yaw = pi/2)
 
-		self.tf_broadcaster = dict( 
+		self.tf_broadcaster.update( 
 			enu_gps = tf.TransformBroadcaster(), 
 			global_gps = tf.TransformBroadcaster()
 			)
@@ -554,24 +554,10 @@ class Magnetomer(Sensor, object):
 		for key, value in kwargs.items():
 			setattr(self, key, value)
 
-	def measure(self, *args, **kwargs):
-		for key, value in kwargs.items():
-			if key in self.measurementList:
-				setattr(self, key, value)
-
-		if len(args) == 1: 
-			if type(arg) == dict():
-				self.measure(**args[0])
-			else: # Hx, Hy, Hz ordered inside a list or tuple
-				i = 0 
-				for attribute in self.measurementList:
-					setattr(self, attribute, arg[i])
-					i += 1
-		elif len(args) == 3: # Hx, Hy, Hz ordered
-			i = 0
-			for attribute in self.measurementList:
-				setattr(self, attribute, args[i])
-				i += 1
+	def measure(self, navdata):
+		self.Hx = navdata.magX 
+		self.Hy = navdata.magY
+		self.Hz = navdata.magZ
 
 		self.yaw = atan2( self.Hz * sin( self.roll ) - self.Hy * cos( self.roll ), 
 			self.Hx * cos( self.pitch ) + (self.Hy * sin( self.roll ) + self.Hz * cos( self.roll ) ) * sin( self.pitch ) )
@@ -649,6 +635,16 @@ class RangeSensor(BasicObject, object):
 		self.min_safe = kwargs.get('min_safe', None)
 
 
+		self.zero = dict( 
+			x = kwargs.get('x', 0), 
+			y = kwargs.get('y', 0),
+			z = kwargs.get('z', 0), 
+			roll = kwargs.get('roll', 0),
+			pitch = kwargs.get('pitch', 0),
+			yaw = kwargs.get('yaw', 0)
+			)
+
+
 	def measure(self, range_data):
 		for key in self.properties.keys():
 			setattr(self, key, getattr(range_data, key) )
@@ -658,6 +654,24 @@ class RangeSensor(BasicObject, object):
 
 	def isNear(self):
 		return self.range <= self.min_range or self.range <= self.min_safe 
+
+	def Broadcast(self):
+		# print "Broadcasting"
+		time = rospy.Time.now()
+
+		self.tf_broadcaster['global_gps'].sendTransform( (self.x, self.y, self.z ), 
+			tf.transformations.quaternion_from_euler(0, 0, self.gps_zero['yaw']), 
+			time,
+			"/global_gps",
+			"/nav"
+			)
+
+		self.tf_broadcaster['enu_gps'].sendTransform( (self.x, self.y, self.z ), 
+			tf.transformations.quaternion_from_euler(0, 0, 0), 
+			time,
+			"/enu_gps",
+			"/nav"
+			)
 
 
 	@property 
@@ -715,6 +729,22 @@ class IMU(BasicObject, object):
 	def sensors(self):
 		del self.properties['sensors']
 
+class Velocity(SixDofObject, Sensor, object):
+	"""docstring for Velocity"""
+	measurementList = ['x', 'y', 'z']
+	stateList = ['velocity.x', 'velocity.y', 'velocity.z']
+	def __init__(self, **kwargs):
+		super(Velocity, self).__init__(**kwargs)
+		
+	def measure(self, navdata):
+		self.x = navdata.vx 
+		self.y = navdata.vy 
+		self.z = navdata.vz 
+
+		self.set_Z()
+
+
+
 def yaw_test():
 	yaw_sensor = DummyYaw(yaw = pi/2 )
 	print yaw_sensor.yaw 
@@ -728,50 +758,20 @@ def yaw_test():
 	print yaw_sensor.StateMap
 	print yaw_sensor.MeasurementJacobian
 
-def gps2_test():
+def velocity_test():
+	import roslib; roslib.load_manifest('ardrone_control')
+	from ardrone_autonomy.msg import Navdata 
 
-	gps = GPS(latitude = 49.8999999626, altitude = 0.242652171948, longitude = 8.89999939638) 
-	print gps.get_measurementList()
-	print gps.latitude, gps.longitude, gps.altitude
+	sensor = Velocity()
+	msg = Navdata()
 
-	gps.map(x = 0, y = 0, z = 0)
-	print gps.Residual
-	gps.map(x = 0, y = 0, z = 1)
-	print gps.Residual
-	gps.map(x = 1, y = 0, z = 0)
-	print gps.Residual
-	
-	"""
-	for item in gps:
-		print item
-	print gps.Z 
-	gps.measure(latitude = 1, altitude = 12, longitude = -4)
-	print gps.Z
-	gps.set_zero()
-	print gps.gps_zero
-	gps.set_zero( latitude = 2., altitude = 1., longitude = 125. )
-	print gps.gps_zero
-	print 'latitude', gps.latitude
+	msg.vx = 0.1
+	msg.vy = -0.2
+
+	sensor.measure(msg)
+	print sensor.properties
 
 
-
-	print gps.Z
-	print gps.MeasurementJacobian
-
-	print 'Z', gps.Z
-	print 'R', gps.Residual
-
-	print gps.map(x = 0, y = 1, z = 3)
-
-	# print 'Z', gps.Z
-	print 'R', gps.Residual
-
-	print 'longitude', gps.longitude
-	print gps.properties
-	print gps == 'GPS'
-	# test(Gyroscope())
-	# test(Accelerometer())
-	"""
 
 def gps():
 	import roslib; roslib.load_manifest('ardrone_control')
@@ -899,7 +899,7 @@ def main():
 	#yaw_test()
 	# gps()
 	#range_test()
-	imu_test()
-
+	#imu_test()
+	velocity_test()
 	
 if __name__ == '__main__': main()
