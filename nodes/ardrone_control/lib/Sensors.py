@@ -252,8 +252,6 @@ class GPS(Sensor, ROS_Object, object):
 
 	the gps_zero['yaw'] is a rotation around Z between northing, easting to global xyz.
 	"""
-	from geometry_msgs.msg import Vector3Stamped; global Vector3Stamped
-	import tf; global tf 
 	measurementList = ['latitude', 'longitude', 'altitude']
 	stateList = ['position.x', 'position.y', 'position.z']
 	def __init__(self, **kwargs):
@@ -624,8 +622,19 @@ class Magnetomer(Sensor, object):
 	def roll(self):
 		del self.properties['roll']
 
-class RangeSensor(BasicObject, object):
-	"""docstring for RangeSensor"""
+class RangeSensor(BasicObject, ROS_Object, object):
+	"""docstring for RangeSensor 
+	This Sensor recieves a Range() message and publishes a tf 
+	with the location of the nearer object. 
+
+	Convention used is that the range object measures distance in Z and 
+	The rotation from /drone_local tf to range tf is done by yaw-pitch-roll euler angles and then 
+	xyz translation in z 
+ 
+	methods isFar and isNear publish boolean messages for landing and detection of objects 
+
+
+	"""
 	def __init__(self, **kwargs):
 		super(RangeSensor, self).__init__()
 		self.max_range = kwargs.get('max_range', 3000.0)
@@ -644,10 +653,18 @@ class RangeSensor(BasicObject, object):
 			yaw = kwargs.get('yaw', 0)
 			)
 
+		self.name = kwargs.get('name', 'range')
+
+		self.tf_broadcaster.update( range_sensor = tf.TransformBroadcaster())
+
+		self.Broadcast()
 
 	def measure(self, range_data):
-		for key in self.properties.keys():
-			setattr(self, key, getattr(range_data, key) )
+		self.max_range = range_data.max_range
+		self.min_range = range_data.min_range
+		self.range = range_data.range
+
+		self.Broadcast()
 
 	def isFar(self):
 		return self.range >= self.max_range 
@@ -659,18 +676,11 @@ class RangeSensor(BasicObject, object):
 		# print "Broadcasting"
 		time = rospy.Time.now()
 
-		self.tf_broadcaster['global_gps'].sendTransform( (self.x, self.y, self.z ), 
-			tf.transformations.quaternion_from_euler(0, 0, self.gps_zero['yaw']), 
+		self.tf_broadcaster['global_gps'].sendTransform( (self.zero['x'], self.zero['y'], self.zero['z'] + self.range ), 
+			tf.transformations.quaternion_from_euler(self.zero['roll'], self.zero['pitch'], self.zero['yaw']), 
 			time,
-			"/global_gps",
-			"/nav"
-			)
-
-		self.tf_broadcaster['enu_gps'].sendTransform( (self.x, self.y, self.z ), 
-			tf.transformations.quaternion_from_euler(0, 0, 0), 
-			time,
-			"/enu_gps",
-			"/nav"
+			self.name,
+			"/drone_local"
 			)
 
 
@@ -771,12 +781,13 @@ def velocity_test():
 	sensor.measure(msg)
 	print sensor.properties
 
-
-
 def gps():
 	import roslib; roslib.load_manifest('ardrone_control')
 	import rospy;  global rospy 
-	
+
+	from geometry_msgs.msg import Vector3Stamped; global Vector3Stamped
+	import tf; global tf 
+
 	
 
 	from sensor_msgs.msg import NavSatFix
@@ -898,8 +909,8 @@ def main():
 	#gps_test()
 	#yaw_test()
 	# gps()
-	#range_test()
+	range_test()
 	#imu_test()
-	velocity_test()
+	#velocity_test()
 	
 if __name__ == '__main__': main()
