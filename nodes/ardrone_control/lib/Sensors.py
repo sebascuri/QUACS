@@ -631,7 +631,11 @@ class RangeSensor(BasicObject, ROS_Object, object):
 	The rotation from /drone_local tf to range tf is done by yaw-pitch-roll euler angles and then 
 	xyz translation in z 
  
+<<<<<<< HEAD
 	methods isFar and isNear publish boolean messages for landing and detection of objects 
+=======
+	methods isFar and isNear publish boolean messages for detection of objects and landing
+>>>>>>> 9c738bcca67e7f737fcd9f9c72408d745cf6f8b8
 
 
 	"""
