@@ -138,7 +138,6 @@ class ExtendedKalmanFilter(BasicObject, object):
 		self.X = self.X + self.KalmanGain * ( self.Z - self.StateMap)
 		self.ErrorCovariance = (matlib.eye(np.size( self.X ) ) - self.KalmanGain * self.MeasurementJacobian ) * self.ErrorCovariance
 
-
 	@property
 	def X(self):
 		return self.properties.get('X', None)
@@ -245,18 +244,35 @@ class MagdwickFilter(BasicObject, object):
 	def __init__(self, **kwargs):
 		super(MagdwickFilter, self).__init__()
 		self.Beta = rospy.get_param('Magdwick/Beta', kwargs.get('Beta', 0.1) )
+		self.J = matlib.zeros([4,3])
+
+		self.F = matlib.zeros([3,1])
 
  	def correct(self):
- 		F = np.mat(tf.transformations.quaternion_matrix( self.quaternion.get_quaternion() ).transpose()[0:3, 2] - self.sensors['accelerometer'].get_measurementvector()).transpose()
-
-		J = np.mat( [
-			[ -2*self.quaternion.y,	2*self.quaternion.z,    -2*self.quaternion.w,	2*self.quaternion.x ], 
-			[ 2*self.quaternion.x,     2*self.quaternion.w,     2*self.quaternion.z,	2*self.quaternion.y], 
-			[ 0,         -4*self.quaternion.x,    -4*self.quaternion.y,	0    ], 
-			]).transpose()
+ 		accelerometer = self.sensors['accelerometer'].get_measurementvector()
 
 
-		step = (np.dot(J, F))
+ 		self.F[0] = 2*( self.quaternion.x * self.quaternion.z - self.quaternion.w * self.quaternion.y) - accelerometer[0]
+ 		self.F[1] = 2*( self.quaternion.w * self.quaternion.x + self.quaternion.y * self.quaternion.z) - accelerometer[1]
+ 		self.F[2] = (self.quaternion.x**2 - self.quaternion.y**2 - self.quaternion.z**2 + self.quaternion.w**2)  - accelerometer[2]
+
+ 		self.J[0,0] = -2*self.quaternion.y
+ 		self.J[0,1] = 2*self.quaternion.x
+ 		self.J[0,2] = 0
+
+ 		self.J[1,0] = 2*self.quaternion.z
+ 		self.J[1,1] = 2*self.quaternion.w
+ 		self.J[1,2] = -4*self.quaternion.x
+
+ 		self.J[2,0] = -2*self.quaternion.w
+ 		self.J[2,1] = 2*self.quaternion.z
+ 		self.J[2,2] = -4*self.quaternion.y
+
+ 		self.J[3,0] = 2*self.quaternion.x
+ 		self.J[3,1] = 2*self.quaternion.y
+ 		self.J[3,2] = 0
+
+		step = (np.dot(self.J, self.F))
 		step = step / linalg.norm(step)
 
 		self.X -= self.Ts*self.Beta * step
@@ -310,15 +326,17 @@ class MahoneyFilter(BasicObject, object):
 		self.Ki = rospy.get_param('Mahoney/Ki', kwargs.get('Ki', 0.1) )
 
 		self.error = dict(
-			proportional = np.array([0., 0., 0.]).transpose(), 
-			integral = np.array([0., 0., 0.]).transpose() )
+			proportional = np.mat([0., 0., 0.]).transpose(), 
+			integral = np.mat([0., 0., 0.]).transpose() )
 
+		self.v =  matlib.zeros([1,3]) 
 
 	def correct(self):
-		v = tf.transformations.quaternion_matrix( self.quaternion.get_quaternion() ).transpose()[0:3, 2]
-		
-		self.error['proportional'] = np.cross( self.sensors['accelerometer'].get_measurementvector(), v)
+		self.v[0,0] = 2*( self.quaternion.x * self.quaternion.z - self.quaternion.w * self.quaternion.y) 
+ 		self.v[0,1] = 2*( self.quaternion.w * self.quaternion.x + self.quaternion.y * self.quaternion.z) 
+ 		self.v[0,2] = self.quaternion.x**2 - self.quaternion.y**2 - self.quaternion.z**2 + self.quaternion.w**2 
 
+		self.error['proportional'] = np.cross( self.sensors['accelerometer'].get_measurementvector(), self.v).transpose()
 		self.error['integral'] += self.Ts * self.error['proportional']  
 
 		u = self.Kp * self.error['proportional']   + self.Ki * self.error['integral'];  
@@ -327,7 +345,7 @@ class MahoneyFilter(BasicObject, object):
 			np.roll( 
 				tf.transformations.quaternion_multiply( 
 					( self.quaternion.get_quaternion() ), 
-					(u[0], u[1], u[2], 0 ), 
+					(u.item(0), u.item(1), u.item(2), 0 ), 
 					), 1)
 			]).transpose()
 

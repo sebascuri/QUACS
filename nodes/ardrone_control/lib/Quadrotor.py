@@ -32,12 +32,15 @@ class Quadrotor(BasicObject, object):
 		if 'imu' in self.sensors.keys():
 			self.orientation = self.sensors['imu'].quaternion # gets orientation from IMU filter
 
+		if 'gps' in self.sensors.keys():
+			self.position = self.sensors['gps'].position
+
+
 		"""
 		if 'gps' in self.sensors.keys():
 			self.position.x = self.sensors['gps'].position.x 
 			self.position.y = self.sensors['gps'].position.y 
 		"""
-
 
 
 	def predict( self ):

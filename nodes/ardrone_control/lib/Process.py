@@ -4,12 +4,13 @@
 from math import pi, cos, sin, sqrt
 import numpy as np 
 import numpy.matlib as matlib 
+import rospy;
 
 try:
 	import tf;
 except ImportError:
 	import roslib; roslib.load_manifest('ardrone_control')
-	import rospy
+	
 	import tf;
 
 
@@ -32,18 +33,19 @@ class BasicProcess(BasicObject, object):
 	"""
 	def __init__(self, **kwargs):
 		super(BasicProcess, self).__init__( **kwargs )
-		self.properties.update( stateList = kwargs.get('stateList', list()))  #List from property to index in X state
+		self.properties.update( stateList = kwargs.get('stateList', self.stateList) )  #List from property to index in X state
 		self.properties.update(
 			X = kwargs.get('X', matlib.zeros( [len(self), 1] )),
 			ProcessJacobian = kwargs.get('ProcessJacobian', matlib.eye( len(self) ) ),
 			Covariance = kwargs.get('Covariance', 0.3 * matlib.eye( len(self) ) ),
-			Ts = kwargs.get('Ts', None),
+			Ts = kwargs.get('Ts', 0.0),
 			position = kwargs.get('position', SixDofObject()),
 			quaternion = kwargs.get('quaternion', Quaternion()),
 			velocity = kwargs.get('velocity', SixDofObject()),
 			acceleration = kwargs.get('acceleration', SixDofObject()) 
 			)
 
+		self.time = rospy.get_time()
 		"""
 		self.stateList = kwargs.get('stateList', list())  #List from property to index in X state
 		self.X = kwargs.get('X', matlib.zeros( [len(self.stateList), 1] ))
@@ -74,6 +76,11 @@ class BasicProcess(BasicObject, object):
 			attribute, direction = key.split('.')
 			self.X[ i ] = getattr(getattr(self, attribute), direction)
 			i += 1
+
+	def update_sampling_rate(self):
+		aux = rospy.get_time()
+		self.Ts = aux - self.time;
+		self.time = aux;
 
 	@property 
 	def stateList(self):
@@ -219,6 +226,41 @@ class Z_Odometry1(BasicProcess, object):
 
 		self.set_X( )
 		return dict(position = self.position)
+
+class Odometry(BasicProcess, object):
+	"""docstring for Odometry
+	First Order Odometry for AR.DRONE
+	x(k+1) = x(k) + vx(k).cos(yaw(k)).Ts - vy(k).sin(yaw(k)).Ts
+	y(k+1) = y(k) + vx(k).sin(yaw(k)).Ts + vy(k).cos(yaw(k)).Ts
+	z(k+1) = z(k) + vz(k).Ts 
+	"""
+	stateList = [ 'position.x', 'position.y' , 'position.z' , 'position.yaw' ]
+	def __init__(self, *args, **kwargs):	
+		super(Odometry, self).__init__(*args, **kwargs)
+
+	def predict(self, **kwargs):
+
+		#super(Odometry, self).predict( **kwargs )
+		
+		self.update_sampling_rate()
+
+
+		self.position.x += self.Ts * ( self.velocity.x * cos(self.position.yaw) - self.velocity.y * sin(self.position.yaw) )
+		self.position.y += self.Ts * ( self.velocity.x * sin(self.position.yaw) + self.velocity.y * cos(self.position.yaw) )
+		self.position.z += self.Ts * self.velocity.z 
+
+		self.ProcessJacobian[0,3] = self.Ts * ( - self.velocity.x * sin(self.position.yaw) - self.velocity.y  * cos(self.position.yaw))
+		self.ProcessJacobian[1,3] = self.Ts * ( + self.velocity.x * cos(self.position.yaw) + self.velocity.y  * sin(self.position.yaw))
+		
+		self.set_X( )
+		
+		#return dict(position = self.position)
+
+	def set_position(self):
+		for key in self.stateList:
+			direction = key.split('.')[1]
+			if not direction == 'yaw':
+				setattr(self.position, direction, self.X.item( self.stateList.index(key) ) )
 		
 class XY_Odometry2(BasicProcess, object):
 	"""docstring for Odometry2
@@ -281,7 +323,10 @@ class SO3(BasicProcess, object):
 		self.X = np.mat([1.0, 0.0, 0.0, 0.0]).transpose()
 
 	def predict(self, **kwargs):
-		super(SO3, self).predict( **kwargs )
+		#super(SO3, self).predict( **kwargs )
+		
+		self.update_sampling_rate()
+
 
 		qdot = 0.5 * np.roll( np.matrix([
 				tf.transformations.quaternion_multiply( 
@@ -294,10 +339,8 @@ class SO3(BasicProcess, object):
 
 		self.set_quaternion()
 
-		self.ProcessJacobian = quaternion_matrix( self.quaternion.get_quaternion( ) )
+		# self.ProcessJacobian = quaternion_matrix( self.quaternion.get_quaternion( ) )
 		
-
-
 		# return dict(quaternion = self.quaternion)	
 
 	def set_quaternion(self):

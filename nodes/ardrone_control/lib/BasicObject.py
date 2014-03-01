@@ -66,7 +66,7 @@ class SixDofObject(BasicObject, object):
 	"""docstring for SixDofObject:
 	This object has properties for each of the 6 degrees of freedom"""
 	def __init__(self, **kwargs):
-		super(SixDofObject, self).__init__()
+		super(SixDofObject, self).__init__(**kwargs)
 		self.properties.update( 
 			x = kwargs.get('x', 0.0), 
 			y = kwargs.get('y', 0.0),
@@ -335,7 +335,7 @@ class Motor(BasicObject, object):
 	Simple object to read pwm of each motor. 
 	"""
 	def __init__(self, **kwargs):
-		super(Motor, self).__init__()
+		super(Motor, self).__init__(**kwargs)
 		self.properties.update( pwm = kwargs.get('pwm', 0) )
 
 	def __str__(self):

@@ -25,7 +25,7 @@ import tf
 
 # Some Constants
 Command_Time = 0.005;
-IMU_period = 0.01
+IMU_Period = 0.01;
 g = 9.81;
 
 class FilteredOdometry(ROS_SensorFusion, object):
@@ -52,7 +52,6 @@ class FilteredOdometry(ROS_SensorFusion, object):
         for key, values in filter_params.items():
             self.low_pass_filters[key] = DigitalFilter( a = values['a'], b = values['b'] )
 
-        
     @property 
     def low_pass_filters(self):
         return self.properties.get('low_pass_filters', None)
@@ -75,10 +74,14 @@ class FilteredOdometry(ROS_SensorFusion, object):
         return navdata
 
 def main():
-    rospy.init_node('SensorFusion_Odometry', anonymous = True)
+    rospy.init_node('SensorFusion', anonymous = True)
+
     node = FilteredOdometry( 
-        sensors = dict( imu = SensorFusion.IMU_Mahoney( Ts = IMU_period ) ), 
-        processes = [Process.XY_Odometry1(Ts = Command_Time), Process.Z_Odometry1(Ts = Command_Time) ] 
+        sensors = dict( 
+            imu = SensorFusion.IMU_Mahoney(  ), 
+            #imu = SensorFusion.IMU_Magdwick(  ),
+            gps = SensorFusion.GPS_Filter(  ) 
+            ) 
         )
     
     rospy.spin()

@@ -116,15 +116,21 @@ class ROS_Handler(DroneController, ROS_Object, object):
 			actuation_timer = rospy.Timer(rospy.Duration( Command_Time ), self.Actuate, oneshot=False) 
 			)
 		
+		self.tfListener = tf.TransformListener()
+		
 		# self.angles_map = dict(x = 0, y = 1 , z = 2)
 		
 	def RecieveOdometry( self, data , method):
 
 		point_data = Vector3Stamped()
 		point_data.header.frame_id = data.header.frame_id
-		point_data.vector = data.pose.pose.position 
 
+		#transform position
+		point_data.vector = data.pose.pose.position 
 		data.pose.pose.position = self.tfListener.transformVector3("/drone_local", point_data).vector
+		#transform velocity
+		point_data.vector = data.twist.twist.linear 
+		data.twist.twist.linear = self.tfListener.transformVector3("/drone_local", point_data).vector
 
 
 
@@ -138,20 +144,27 @@ class ROS_Handler(DroneController, ROS_Object, object):
 		if method == 'set_input':
 			self.yaw = angles[ self.Angles_MAP['z'] ]
 
+
 	def Actuate(self, time):
 		if self.state == 'On':
 			twist = Twist()
 			for key in self.position_control.keys():
 				setattr(twist.linear, key, self.position_control[key].get_output( ))
 
-
 			for key in self.orientation_control.keys( ):
 				setattr(twist.angular, key, self.orientation_control[key].get_output( ))
 
-			# aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
-			# aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
-			# twist.linear.x = aux_x
-			# twist.linear.y = aux_y
+			
+			# point_data = Vector3Stamped()
+			# point_data.header.frame_id = '/nav'
+			# point_data.vector = twist.linear 
+			# twist.linear = self.tfListener.transformVector3("/drone_local", point_data).vector
+
+
+			#aux_x = twist.linear.x * cos(self.yaw) + twist.linear.y * sin(self.yaw)
+			#aux_y = - twist.linear.x * sin(self.yaw) + twist.linear.y * cos(self.yaw)
+			#twist.linear.x = aux_x
+			#twist.linear.y = aux_y
 			self.publisher['command_velocity'].publish(twist)
 
 	def RecieveState(self, data):

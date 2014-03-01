@@ -15,6 +15,8 @@ from Filter import ExtendedKalmanFilter, MagdwickFilter, MahoneyFilter
 
 from ROS import ROS_Object
 
+from geometry_msgs.msg import Vector3Stamped; global Vector3Stamped
+
 try:
 	import tf;
 except ImportError:
@@ -45,8 +47,8 @@ class Sensor(BasicObject, object):
 	def __init__(self, **kwargs):
 		super(Sensor, self).__init__( **kwargs )
 
-		self.properties.update( measurementList = kwargs.get('measurementList', list() ),
-			stateList = kwargs.get('stateList', list() ) )
+		self.properties.update( measurementList = kwargs.get('measurementList', self.measurementList ),
+			stateList = kwargs.get('stateList',self.stateList ) )
 
 		for attribute in self.measurementList:
 			setattr(self, attribute, kwargs.get(attribute, 0.) )
@@ -244,7 +246,7 @@ class DummyYaw(Sensor, object):
 	def yaw(self):
 		del self.properties['yaw']
 
-class GPS(Sensor, ROS_Object, object):
+class GPS(Sensor, object):
 	"""docstring for GPS 
 	x is easting
 	y is northing
@@ -252,28 +254,20 @@ class GPS(Sensor, ROS_Object, object):
 
 	the gps_zero['yaw'] is a rotation around Z between northing, easting to global xyz.
 	"""
-	from geometry_msgs.msg import Vector3Stamped; global Vector3Stamped
-	import tf; global tf 
-	measurementList = ['latitude', 'longitude', 'altitude']
+	measurementList = ['x', 'y', 'z']
 	stateList = ['position.x', 'position.y', 'position.z']
 	def __init__(self, **kwargs):
-		super(GPS, self).__init__(stateList = GPS.stateList, measurementList = GPS.measurementList, **kwargs)
-		
+		super(GPS, self).__init__(**kwargs)
+
 		self.MeasurementCovariance= 0.4 * matlib.eye( len(self.measurementList) )
 
-		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
+		easting, northing, number, letter = utm.from_latlon( kwargs.get('latitude', 0) , kwargs.get('longitude', 0) )
 
-		self.gps_zero = dict( x = easting, y = northing, z = self.altitude, yaw = pi/2)
+		self.gps_zero = dict( x = easting, y = northing, z = kwargs.get('altitude', utm.conversion.R), yaw = pi/2)
 
-		self.tf_broadcaster.update( 
-			enu_gps = tf.TransformBroadcaster(), 
-			global_gps = tf.TransformBroadcaster()
-			)
-		
-		self.Broadcast()
+
 
 		self.calibrated = False
-
 
 	def set_zero(self, fix_zero):
 		easting, northing, number, letter = utm.from_latlon( fix_zero.latitude, fix_zero.longitude )
@@ -287,56 +281,24 @@ class GPS(Sensor, ROS_Object, object):
 
 	def measure(self, fix_data):
 		# set measurements 
-		for key in self.measurementList:
-			setattr(self, key, getattr(fix_data, key) )
+		# for key in self.measurementList:
+		# 	setattr(self, key, getattr(fix_data, key) )
 
 		# transform latitude longitude to easting, northing
-		easting, northing, number, letter = utm.from_latlon( self.latitude, self.longitude )
+		easting, northing, number, letter = utm.from_latlon( fix_data.latitude, fix_data.longitude )
 
-		enu = Vector3Stamped( )
-		enu.vector.x = easting - self.gps_zero['x']
-		enu.vector.y = northing - self.gps_zero['y']
-		enu.vector.z = fix_data.altitude - self.gps_zero['z']
-		enu.header.frame_id = "/enu_gps"
+		enu_x = easting - self.gps_zero['x']
+		enu_y = northing - self.gps_zero['y']
+		enu_yaw = self.gps_zero['yaw']
 
-
-		
-		try:
-			global_gps = self.tfListener.transformVector3("/global_gps", enu)
-			super(GPS, self).measure(
-				x = global_gps.vector.x, 
-				y = global_gps.vector.y, 
-				z = global_gps.vector.z
-			)
-		except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-			super(GPS, self).measure(
-				x = enu.vector.x, 
-				y = enu.vector.y, 
-				z = enu.vector.z
-			) 
+		super(GPS, self).measure(
+			x = enu_x * cos( enu_yaw ) - enu_y * sin( enu_yaw ),
+			y = enu_x * sin( enu_yaw ) + enu_y * cos( enu_yaw ) ,
+			z = fix_data.altitude - self.gps_zero['z'] )
 
 
-		self.Broadcast()
-		# set attributes and Z vector
-		
+		self.set_Z()
 
-	def Broadcast(self):
-		# print "Broadcasting"
-		time = rospy.Time.now()
-
-		self.tf_broadcaster['global_gps'].sendTransform( (self.x, self.y, self.z ), 
-			tf.transformations.quaternion_from_euler(0, 0, self.gps_zero['yaw']), 
-			time,
-			"/global_gps",
-			"/nav"
-			)
-
-		self.tf_broadcaster['enu_gps'].sendTransform( (self.x, self.y, self.z ), 
-			tf.transformations.quaternion_from_euler(0, 0, 0), 
-			time,
-			"/enu_gps",
-			"/nav"
-			)
 
 	@property 
 	def latitude(self):
@@ -747,15 +709,54 @@ class Velocity(SixDofObject, Sensor, object):
 	stateList = ['velocity.x', 'velocity.y', 'velocity.z']
 	def __init__(self, **kwargs):
 		super(Velocity, self).__init__(**kwargs)
-		
+		if not hasattr(self, 'velocity'):
+			self.velocity = SixDofObject()
+
+
+		self.velocity.x = self.x 
+		self.velocity.y = self.y 
+		self.velocity.z = self.z 
+
 	def measure(self, navdata):
-		self.x = navdata.vx 
-		self.y = navdata.vy 
-		self.z = navdata.vz 
+		for measure in self.measurementList:
+			setattr(self, measure, getattr(navdata, 'v%s'%measure)/1000.0 )
 
 		self.set_Z()
+		self.set_velocities()
 
+	def set_velocities(self):
+		for measure in self.measurementList:
+			setattr(self.velocity, measure, getattr(self, measure))
 
+	@property 
+	def x(self):
+		return self.properties.get('x', 0.0)
+	@x.setter 
+	def x(self, x):
+		self.properties['x'] = x
+	@x.deleter
+	def x(self):
+		del self.properties['x']
+
+	@property 
+	def y(self):
+		return self.properties.get('y', 0.0)
+	@y.setter 
+	def y(self, y):
+		self.properties['y'] = y
+	@y.deleter
+	def y(self):
+		del self.properties['y']
+
+	@property 
+	def z(self):
+		return self.properties.get('z', 0.0)
+	@z.setter 
+	def z(self, z):
+		self.properties['z'] = z
+	@z.deleter
+	def z(self):
+		del self.properties['z']
 
 def yaw_test():
 	yaw_sensor = DummyYaw(yaw = pi/2 )
@@ -781,11 +782,15 @@ def velocity_test():
 	msg.vy = -0.2
 
 	sensor.measure(msg)
+	sensor.measure(msg)
 	print sensor.properties
 
+	print sensor.velocity
+	print sensor.x 
 
 
 def gps():
+	print utm.conversion.R
 	import roslib; roslib.load_manifest('ardrone_control')
 	import rospy;  global rospy 
 	
@@ -794,7 +799,7 @@ def gps():
 	from sensor_msgs.msg import NavSatFix
 	
 	
-	rospy.init_node('test')
+	# rospy.init_node('test')
 
 	gps = GPS() 
 	#print gps 
@@ -909,7 +914,7 @@ def main():
 	
 	#gps_test()
 	#yaw_test()
-	# gps()
+	gps()
 	#range_test()
 	#imu_test()
 	velocity_test()

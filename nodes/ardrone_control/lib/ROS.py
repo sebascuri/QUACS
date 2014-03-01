@@ -12,7 +12,7 @@ class ROS_Object(object):
 		if not hasattr(self, 'properties'):
 			self.properties = dict()
 
-		self.tfListener = tf.TransformListener()
+		
 		self.publisher = dict()
 		self.subscriber = dict()
 		self.timer = dict()

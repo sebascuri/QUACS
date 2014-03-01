@@ -1,0 +1,1 @@
+<node name="trajectory" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/trajectory /ardrone/sensorfusion/navdata /ardrone/trajectory /ardrone/cmd_vel /ground_truth/state"/>  
