@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ "$1" != "" ]; then
+    rostopic echo -p /ground_truth/state > `rospack find ardrone_control`/bagfiles/"$1"_$(date +%Y-%m-%d-%H-%M-%S)_truth.csv
+else
+    rostopic echo -p /ground_truth/state > `rospack find ardrone_control`/bagfiles/$(date +%Y-%m-%d-%H-%M-%S)_truth.csv
+fi
