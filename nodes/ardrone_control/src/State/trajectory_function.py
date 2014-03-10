@@ -4,6 +4,9 @@
 import roslib; roslib.load_manifest('ardrone_control')
 import rospy
 
+import os;
+
+
 # Import the messages we're interested in sending and receiving
 from sensor_msgs.msg import Imu, Range
 from nav_msgs.msg import Odometry 
@@ -242,6 +245,10 @@ def main():
 		continue;
 	else: 
 		ros_handler.StopTrajectory()
+
+	rospy.sleep(20.)
+
+	os.system("rosnode kill --all")
 
 	rospy.spin()
 		

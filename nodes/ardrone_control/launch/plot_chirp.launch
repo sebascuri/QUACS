@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="rxtools" type="rxplot" name="plot_vels" args="/cmd_vel/linear/x:y:z,/cmd_vel/angular/z" />
+</launch>

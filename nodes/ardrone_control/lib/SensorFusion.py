@@ -129,7 +129,7 @@ class GPS_Filter(Process.Odometry, Filter.ExtendedKalmanFilter, object):
 			[ 0., 0., 0., 1.],
 			])
 
-		self.MeasurementCovariance  = 0.01 * R * np.mat( [
+		self.MeasurementCovariance  = 0.01 * R**2 * np.mat( [
 			[ 1., 0., 0., 0.],
 			[ 0., 1., 0., 0.],
 			[ 0., 0., 1., 0.],

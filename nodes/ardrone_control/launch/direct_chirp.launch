@@ -1,0 +1,23 @@
+<launch>
+	<!-- include Simulator -->
+	<arg name="simulator" default="true"/>
+
+	<include file="$(find cvg_sim_test)/launch/3boxes_room.launch"  if="$(arg simulator)"/>
+	
+	<!-- include record files -->
+	<arg name="record" default="false" />
+
+	<group if="$(arg record)">
+    	<node name="record_cmd_vel" pkg="ardrone_control" type="record_cmd_vel" respawn="false" output="screen" required="true" args="chirp"/>
+    	<node name="record_imu" pkg="ardrone_control" type="record_imu" respawn="false" output="screen" required="true" args="chirp"/>
+    	<node name="record_navdata" pkg="ardrone_control" type="record_navdata" respawn="false" output="screen" required="true" args="chirp"/>
+  	</group>
+
+	<!-- include realtime plot -->
+	<arg name="plot" default="false" /> <!-- It CRASHES simulator in my Computer-->
+	<include file="$(find ardrone_control)/launch/plot_chirp.launch" if="$(arg plot)"/>	
+	
+	<!-- rosrun direct_chirp pkg-->
+	<node name="chirp_cmd" pkg="ardrone_control" type="direct_chirp.py" respawn="false" output="screen" />
+
+</launch>

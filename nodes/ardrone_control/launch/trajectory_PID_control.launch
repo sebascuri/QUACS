@@ -5,7 +5,11 @@
 	
 	<!-- include record files -->
 	<arg name="record" default="false" />
-	<include file="$(find ardrone_control)/launch/record_all.launch" if="$(arg record)"/>
+	<group if="$(arg record)">
+    	<node name="record_truth" pkg="ardrone_control" type="record_truth" respawn="false" output="screen" required="true" args="trajectory"/>
+    	<node name="record_trajectory" pkg="ardrone_control" type="record_trajectory" respawn="false" output="screen" required="true" args="trajectory"/>
+    	<node name="record_navdata" pkg="ardrone_control" type="record_sensorfusion" respawn="false" output="screen" required="true" args="trajectory"/>
+  	</group>
 
 	<!-- include realtime plot -->
 	<arg name="plot" default="false" /> <!-- It CRASHES simulator in my Computer-->

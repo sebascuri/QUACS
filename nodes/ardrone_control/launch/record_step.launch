@@ -1,0 +1,3 @@
+<launch>
+	<node name="step_rec" pkg="rosbag" type="record" args="-o $(find ardrone_control)/bagfiles/step /cmd_vel /ardrone/navdata /ardrone/imu"/>  
+</launch>
