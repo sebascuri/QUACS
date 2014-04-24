@@ -36,12 +36,6 @@ class Quadrotor(BasicObject, object):
 			self.position = self.sensors['gps'].position
 
 
-		"""
-		if 'gps' in self.sensors.keys():
-			self.position.x = self.sensors['gps'].position.x 
-			self.position.y = self.sensors['gps'].position.y 
-		"""
-
 
 	def predict( self ):
 		for process in self.processes:

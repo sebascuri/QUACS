@@ -265,8 +265,6 @@ class GPS(Sensor, object):
 
 		self.gps_zero = dict( x = easting, y = northing, z = kwargs.get('altitude', utm.conversion.R), yaw = pi/2)
 
-
-
 		self.calibrated = False
 
 	def set_zero(self, fix_zero):

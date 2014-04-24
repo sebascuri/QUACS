@@ -14,6 +14,9 @@ import Process
 import Sensors
 import SensorFusion
 
+from BasicObject import SixDofObject
+
+
 from Filter import DigitalFilter
 from ROS_Odometry import ROS_Odometry 
 from ROS_SensorFusion import ROS_SensorFusion
@@ -78,10 +81,10 @@ def main():
 
     node = FilteredOdometry( 
         sensors = dict( 
-            imu = SensorFusion.IMU_Mahoney(  ), 
+            imu = SensorFusion.IMU_Mahoney(  ) ,
             #imu = SensorFusion.IMU_Magdwick(  ),
-            gps = SensorFusion.GPS_Filter(  ) 
-            ) 
+            gps = SensorFusion.GPS_Filter( position = SixDofObject( x = 2.0, y = -3.0, z = 1.0, yaw = 0.0, pitch = 0.0, roll = 0.0) ) 
+            )
         )
     
     rospy.spin()

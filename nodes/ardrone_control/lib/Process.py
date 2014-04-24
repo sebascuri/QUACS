@@ -391,10 +391,10 @@ def process_test( process_object ):
 
 def main():
 	process_test( XY_Odometry1( Ts = 1 ) )
-	process_test( XY_Odometry2( Ts = 1 ) )
-	process_test( Z_Odometry1( Ts = 1 ) )
-	process_test( Z_Odometry2( Ts = 1 ) )
-	process_test( SO3(Ts = 1) )
+	#process_test( XY_Odometry2( Ts = 1 ) )
+	#process_test( Z_Odometry1( Ts = 1 ) )
+	#process_test( Z_Odometry2( Ts = 1 ) )
+	#process_test( SO3(Ts = 1) )
 
 
 

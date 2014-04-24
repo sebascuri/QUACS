@@ -9,6 +9,7 @@ from sensor_msgs.msg import NavSatFix, Range
 from nav_msgs.msg import Odometry 
 from ardrone_autonomy.msg import Navdata
 
+from BasicObject import SixDofObject
 from ROS import ROS_Object 
 from SensorFusion import GPS_Filter 
 # from SensorFusion import IMU_Kalman, IMU_Magdwick, IMU_Mahoney
@@ -21,7 +22,8 @@ class ROS_GPS(ROS_Object, object):
 	def __init__(self, **kwargs):
 		super(ROS_GPS, self).__init__()
 
-		self.gps = GPS_Filter( Ts = 0.005 )
+		self.gps = GPS_Filter( Ts = 0.005, position = SixDofObject(x = 2.0) )
+		print type(self.gps.position)
 
 		self.publisher = dict(
             state = rospy.Publisher('/ardrone/gps', Odometry)
@@ -35,7 +37,6 @@ class ROS_GPS(ROS_Object, object):
 	def ReceiveNavdata(self, navdata):
 		self.gps.measure_navdata(navdata)
 
-		#dummy input
 		self.gps.position.set_properties( yaw = navdata.rotZ * pi/180 )
 
 		self.gps.predict()

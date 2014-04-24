@@ -166,7 +166,7 @@ class GPS_Filter(Process.Odometry, Filter.ExtendedKalmanFilter, object):
 
 def test_gps():
 	print "New Test"
-	gps = GPS_Filter( Ts = 0.001 )
+	gps = GPS_Filter( Ts = 0.001, position = dict(x = 1.0) )
 
 def test_imu():
 	imu = IMU_Kalman( Ts = 0.01 )

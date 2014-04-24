@@ -141,7 +141,8 @@ class ROS_SensorFusion(Quadrotor, ROS_Object, object):
 def main():
     rospy.init_node('SensorFusion_Odometry', anonymous = True)
     node = ROS_SensorFusion( 
-        sensors = dict( imu = SensorFusion.IMU_Magdwick(Ts = IMU_Period) )
+        sensors = dict( imu = SensorFusion.IMU_Magdwick(Ts = IMU_Period) ), 
+        position = dict( x = 2.0, y = -3.0, z = 1.0, yaw = 0.0, pitch = 0.0, roll = 0.0)
         )
     # gps = SensorFusion.GPS_Filter(Ts = Command_Time) ) 
     
